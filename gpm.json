@@ -1,0 +1,15 @@
+{
+    "authors": [
+        "Gabriel Auger"
+    ],
+    "deps": [],
+    "description": "wrapper for several microsoft tools, like msbuild.exe csc.exe msdeploy.exe",
+    "filen_main": "main.py",
+    "installer": "gpm",
+    "licenses": [
+        "MIT"
+    ],
+    "name": "mstools",
+    "uuid4": "1bf4906e-623b-4b6d-9cd3-b4117e3df9e2",
+    "version": "0.0.0"
+}
