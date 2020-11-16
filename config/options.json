@@ -33,7 +33,7 @@
         "info": "display debugging message"
     },
     "deploy": {
-        "args": "pre_deploy,profile,push,webconfig",
+        "args": "pre_deploy,exclude,profile,push,webconfig",
         "required": "profile"
 
     },
@@ -44,6 +44,12 @@
     },
     "force": {
         "nested": true
+    },
+    "exclude": {
+        "info": "exclude those folders during deploy",
+        "nested": true,
+        "nvalues": "1,*",
+        "values": "DIRNAMES"
     },
     "link": {
         "info": "Gives Keywords to help findind the reference files for linking",

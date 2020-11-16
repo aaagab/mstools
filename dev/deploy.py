@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import glob
 import json
 from lxml import etree
 from pprint import pprint
@@ -13,9 +14,10 @@ from ..gpkgs import message as msg
 from ..gpkgs import shell_helpers as shell
 
 def deploy(
-    filenpa_msdeploy,
     deploy_path,
     direpa_publish,
+    filenpa_msdeploy,
+    exclude_paths,
     push_paths,
 ):
 
@@ -24,6 +26,9 @@ def deploy(
     filenpa_tmp=None
     success=False
     if deploy_path[:6] == "ftp://":
+        defaults="*/App_Data/log.txt; */Uploads/; */Logs/"
+        filemask=get_filemask(direpa_publish, exclude_paths, defaults)
+
         winscp_profile=deploy_path[6:].split("/")[0]
         direpa_ftp_dst=deploy_path[6+len(winscp_profile):].replace("\\", "/")
         deploy_paths=get_paths(direpa_ftp_dst, direpa_publish, push_paths)
@@ -31,9 +36,11 @@ def deploy(
         direpa_not_found=(winscp_cmd(winscp_profile, "stat {}".format(direpa_ftp_dst), fail=False) == 1)
         if direpa_not_found:
             msg.error("ftp path not found '{}'".format(direpa_ftp_dst), exit=1)
+        # cmd_sync=r'synchronize remote -mirror -delete -criteria=time -transfer=automatic -filemask="| */App_Data/log.txt; */Uploads/; */Logs/" "{}" "{}"'
+        cmd_sync=r'synchronize remote -mirror -delete -criteria=time -transfer=automatic{} "{{}}" "{{}}"'.format(filemask)
 
         if deploy_paths is None:
-            cmd=r'synchronize remote -mirror -delete -criteria=time -transfer=automatic -filemask="| */App_Data/log.txt; */Uploads/; */Logs/" "{}" "{}"'.format(
+            cmd=cmd_sync.format(
                 direpa_publish,
                 direpa_ftp_dst,
             )
@@ -53,7 +60,7 @@ def deploy(
                     direpa_not_found=(winscp_cmd(winscp_profile, "stat {}".format(dy_path["dst"]), fail=False) == 1)
                     if direpa_not_found:
                         winscp_cmd(winscp_profile, "mkdir \"{}\"".format(dy_path["dst"]))
-                    cmd=r'synchronize remote -mirror -delete -criteria=time -transfer=automatic -filemask="| */App_Data/log.txt; */Uploads/; */Logs/" "{}" "{}"'.format(
+                    cmd=cmd_sync.format(
                         dy_path["src"],
                         dy_path["dst"],
                     )
@@ -102,6 +109,71 @@ def deploy(
                 shell.cmd_prompt(cmd)
 
     msg.success("deploy completed")
+
+def get_filemask(direpa_publish, exclude_paths, defaults):
+    tmp_exclude_paths=[]
+    for user_elem in exclude_paths:
+        found=False
+        if os.path.isabs(user_elem):
+            msg.error("for --deploy --ignore path must be relative '{}'".format(user_elem), exit=1)
+            if user_elem[0] in ["\\", "/"]:
+                user_elem=user_elem[1:]
+        path_rel_elem_user=user_elem.replace("\\", "/")
+        level_user=path_rel_elem_user.count("/")+1
+        # print("\nlevel_user", level_user,"path_rel_elem_user", "'", path_rel_elem_user, "'")
+
+        for path, directories, files in os.walk(direpa_publish):
+            path_rel=path.replace(direpa_publish, "").replace("\\", "/")
+            if len(path_rel) > 0:
+                if path_rel[0] == "/":
+                    path_rel=path_rel[1:]
+
+            level=1
+            if len(path_rel) > 0:
+                if "/" in path_rel:
+                    level=len(path_rel.split("/"))+1
+                else:
+                    level=2
+            # print("#######################################")
+            # print("level", level,"path_rel", "'", path_rel, "'")
+
+            if level < level_user:
+                continue
+            elif level == level_user:
+                # print("level:", level, "level_user:", level_user)
+                count=0
+                for elems in [directories, files]:
+                    for elem in elems:
+                        path_rel_elem=os.path.join(path_rel, elem).replace("\\", "/")
+                        if path_rel_elem.lower() == path_rel_elem_user.lower():
+                            found=True
+                            # print("----------------------------")
+                            # print("path_rel_elem", path_rel_elem)
+                            # print("path_rel_elem_user", path_rel_elem_user)
+                            tmp_str="*/{}".format(path_rel_elem)
+                            if count == 0:
+                                tmp_str+="/"
+                            tmp_exclude_paths.append(tmp_str)
+                            break
+                    count+=1
+                    if found is True:
+                        break
+                if found is True:
+                    break
+            else:
+                break
+        
+        if found is False:
+            msg.error("for --deploy --ignore relative path not found '{}'".format(user_elem), exit=1)
+
+    filemask=" -filemask=\"| {}".format(
+        defaults
+    )
+    if len(tmp_exclude_paths) > 0:
+        filemask+="; "+"; ".join(sorted(tmp_exclude_paths))
+
+    filemask+="\""
+    return filemask
 
 def winscp_cmd(winscp_profile, cmd, fail=True):
     filenpa_tmp=tempfile.TemporaryFile().name
