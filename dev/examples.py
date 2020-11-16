@@ -16,6 +16,7 @@ def examples():
         mstools --publish -p proxy --any
 
         mstools --deploy -p proxy --push '"web.config"'
+        mstools -p mydev --deploy --exclude app scripts
 
         mstools --run --main mydebug --params thisisparam --slim
         mstools --run --main mydebug --params thisisparam --exe
