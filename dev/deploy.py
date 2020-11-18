@@ -124,6 +124,10 @@ def get_filemask(direpa_publish, exclude_paths, defaults):
 
         for path, directories, files in os.walk(direpa_publish):
             path_rel=path.replace(direpa_publish, "").replace("\\", "/")
+            
+            if "roslyn" in path:
+                print(path)
+
             if len(path_rel) > 0:
                 if path_rel[0] == "/":
                     path_rel=path_rel[1:]
@@ -141,6 +145,7 @@ def get_filemask(direpa_publish, exclude_paths, defaults):
                 continue
             elif level == level_user:
                 # print("level:", level, "level_user:", level_user)
+            
                 count=0
                 for elems in [directories, files]:
                     for elem in elems:
@@ -161,7 +166,8 @@ def get_filemask(direpa_publish, exclude_paths, defaults):
                 if found is True:
                     break
             else:
-                break
+                pass
+                # break
         
         if found is False:
             msg.error("for --deploy --ignore relative path not found '{}'".format(user_elem), exit=1)
