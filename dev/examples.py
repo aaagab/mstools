@@ -17,6 +17,7 @@ def examples():
 
         mstools --deploy -p proxy --push '"web.config"'
         mstools -p mydev --deploy --exclude app scripts
+        mstools --publish -p mydev -r any --deploy --exclude app scripts App_Data Content EmailTemplates bin\roslyn fonts Properties Views
 
         mstools --run --main mydebug --params thisisparam --slim
         mstools --run --main mydebug --params thisisparam --exe
