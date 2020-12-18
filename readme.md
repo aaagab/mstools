@@ -26,3 +26,67 @@ With option -delete filemask filter for folder to exclude must be exclude the sa
 # https://stackoverflow.com/questions/19566820/how-to-deploy-project-with-msdeploy-instead-of-msbuild
 # C:\Program Files\IIS\Microsoft Web Deploy V3\msdeploy.exe
 # C:\Program Files (x86)\IIS\Microsoft Web Deploy V3\msdeploy.exe
+
+
+%userprofile%\fty\etc\mstools\settings.json
+```json
+{
+    "apps": {
+        "appname1": {
+            "active": true,
+            "port": 9020,
+            "direl": "e/example"
+        },
+        "appname2": {
+            "active": true,
+            "port": 9030,
+            "direl": "/e/example"
+        }
+    },
+    "globals": {
+        "direpa_logs": "C:/Users/user/fty/www/logs",
+        "confs": {
+            "debug": {
+                "deploy_path": {
+                    "hostname1": "C:/Users/user/fty/local",
+                    "hostname2": "C:/Users/user/fty/local"
+                },
+                "hostname": "http://localhost"
+            },
+            "mydev": {
+                "deploy_path": {
+                    "hostname1": "V:/",
+                    "hostname2": "ftp://hostname1/www"
+                },
+                "hostname": "https://www.example.com"
+            },
+            "proxy": {
+                "deploy_path": {
+                    "hostname1": "C:/Users/user/fty/local",
+                    "hostname2": "C:/Users/user/fty/local"
+                },
+                "hostname": "https://www.example.com"
+            },
+            "mytest": {
+                "deploy_path": {
+                    "hostname1": "W:/",
+                    "hostname2": "ftp://hostname1/www"
+                },
+                "hostname": "https://www.example.com"
+            },
+            "release": {
+                "deploy_path": {
+                    "hostname1": "C:/Users/user/fty/releases",
+                    "hostname2": "C:/Users/user/fty/releases"
+                },
+                "hostname": "https://webapps.example.com"
+            }
+        },
+        "direpa_framework": "C:/Program Files (x86)/Reference Assemblies/Microsoft/Framework/.NETFramework",
+        "filenpa_express": "C:/Program Files (x86)/IIS Express/iisexpress.exe",
+        "filenpa_csc": "C:/Program Files (x86)/Microsoft Visual Studio/2019/Community/MSBuild/Current/Bin/Roslyn/csc.exe",
+        "filenpa_msbuild": "C:/Program Files (x86)/Microsoft Visual Studio/2019/Community/MSBuild/Current/Bin/msbuild.exe",
+        "filenpa_msdeploy": "C:/Program Files (x86)/IIS/Microsoft Web Deploy V3/msdeploy.exe"
+    }
+}
+```
