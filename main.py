@@ -12,7 +12,11 @@ import sys
 # pip3 install lxml
 
 def get_dy_conf():
-    filenpa_apps=os.path.join(os.environ["userprofile"], "fty", "bin", "apps.json")
+    direpa_conf=os.path.join(os.path.expanduser("~"), "fty", "etc", "mstools")
+    os.makedirs(direpa_conf, exist_ok=True)
+    filenpa_apps=os.path.join(direpa_conf, "settings.json")
+    if not os.path.exists(filenpa_apps):
+        pkg.msg.error("Not found '{}'".format(filenpa_apps), exit=1)
     dy_conf=pkg.Json_config(filenpa_apps).data
     conf_profiles=dy_conf["globals"]["confs"]
     return dict(
@@ -38,7 +42,6 @@ if __name__ == "__main__":
     args, dy_app=pkg.Options(filenpa_app="gpm.json", filenpa_args="config/options.json").get_argsns_dy_app()
 
     if args.build.here:
-        dy_conf=get_dy_conf()
         dy_csproj=pkg.get_dy_csproj(direpa_root=args.path_csproj.value)
 
         pkg.build_project(
@@ -92,9 +95,8 @@ if __name__ == "__main__":
         pkg.examples()
     elif args.publish.here or args.deploy.here:
         dy_conf=get_dy_conf()
-        dy_csproj=pkg.get_dy_csproj(direpa_root=args.path_csproj.value)
 
-        
+        dy_csproj=pkg.get_dy_csproj(direpa_root=args.path_csproj.value)
 
         profile=pkg.get_profile(
             app_name=dy_csproj["app_name"],
