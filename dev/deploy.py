@@ -20,8 +20,6 @@ def deploy(
     exclude_paths,
     push_paths,
 ):
-
-
     cmd=[]
     filenpa_tmp=None
     success=False
