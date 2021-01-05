@@ -65,7 +65,7 @@ def get_profile(
     profile=dict(
         direpa_publish=os.path.normpath(os.path.join(direpa_root, "_publish", "build")),
         deploy_path=os.path.join(
-            conf_profiles[profile_name]["deploy_path"][hostname],
+            conf_profiles[profile_name]["deploy_path"][hostname].replace("{user_profile}", os.path.expanduser("~")),
             conf_apps[app_name]["direl"]
         ).replace("\\", "/"),
         hostname_direl="",
