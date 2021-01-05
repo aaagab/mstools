@@ -50,7 +50,7 @@ With option -delete filemask filter for folder to exclude must be exclude the sa
                 },
                 "hostname": "http://localhost"
             },
-            "dev": {
+            "mydev": {
                 "deploy_path": {
                     "hostname1": "V:/",
                     "hostname2": "ftp://hostname1/www"
@@ -71,7 +71,7 @@ With option -delete filemask filter for folder to exclude must be exclude the sa
                 },
                 "hostname": "https://www.example.com"
             },
-            "test": {
+            "mytest": {
                 "deploy_path": {
                     "hostname1": "W:/",
                     "hostname2": "ftp://hostname1/www"
