@@ -33,27 +33,31 @@ With option -delete filemask filter for folder to exclude must be exclude the sa
 {
     "apps": {
         "appname1": {
-            "active": true,
             "port": 9020,
             "direl": "e/example"
         },
         "appname2": {
-            "active": true,
             "port": 9030,
             "direl": "/e/example"
         }
     },
     "globals": {
-        "direpa_logs": "C:/Users/user/fty/www/logs",
         "confs": {
             "debug": {
                 "deploy_path": {
-                    "hostname1": "C:/Users/user/fty/local",
-                    "hostname2": "C:/Users/user/fty/local"
+                    "hostname1": "{user_profile}/fty/local",
+                    "hostname2": "{user_profile}/fty/local"
                 },
                 "hostname": "http://localhost"
             },
-            "mydev": {
+            "dev": {
+                "deploy_path": {
+                    "hostname1": "V:/",
+                    "hostname2": "ftp://hostname1/www"
+                },
+                "hostname": "https://www.example.com"
+            },
+            "myprod": {
                 "deploy_path": {
                     "hostname1": "V:/",
                     "hostname2": "ftp://hostname1/www"
@@ -62,22 +66,22 @@ With option -delete filemask filter for folder to exclude must be exclude the sa
             },
             "proxy": {
                 "deploy_path": {
-                    "hostname1": "C:/Users/user/fty/local",
-                    "hostname2": "C:/Users/user/fty/local"
+                    "hostname1": "{user_profile}/fty/local",
+                    "hostname2": "{user_profile}/fty/local"
                 },
                 "hostname": "https://www.example.com"
             },
-            "mytest": {
+            "test": {
                 "deploy_path": {
                     "hostname1": "W:/",
                     "hostname2": "ftp://hostname1/www"
                 },
                 "hostname": "https://www.example.com"
             },
-            "release": {
+            "prod": {
                 "deploy_path": {
-                    "hostname1": "C:/Users/user/fty/releases",
-                    "hostname2": "C:/Users/user/fty/releases"
+                    "hostname1": "{user_profile}/fty/releases",
+                    "hostname2": "{user_profile}/fty/releases"
                 },
                 "hostname": "https://webapps.example.com"
             }
