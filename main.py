@@ -158,8 +158,12 @@ if __name__ == "__main__":
                 pkg.msg.error("pre-deploy script failed '{}'".format(arg.pre_deploy.value), exit=1)
 
         if args.zip_release.here is True:
+            direpa_dst=args.zip_release.value
+            if direpa_dst is None:
+                direpa_dst=profile["deploy_path"]
             pkg.zip_release(
                 app_name=dy_csproj["app_name"],
+                direpa_dst=direpa_dst,
                 direpa_publish=profile["direpa_publish"],
             )
 

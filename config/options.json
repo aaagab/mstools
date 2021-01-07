@@ -117,6 +117,9 @@
         "values": "bundle-on|bundle-off|custom-on|custom-off|debug-on|debug-off"
     },
     "zip_release": {
-        "nested": true
+        "nested": true,
+        "nvalues": "?",
+        "type": "directory",
+        "values": "PATH"
     }
 }
