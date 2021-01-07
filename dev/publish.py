@@ -173,23 +173,20 @@ def get_webconfig_profile(direpa_publish):
 
     return xml_elem.attrib["value"]
     
-def zip_release(app_name, direpa_publish):
-    filenpa_version=os.path.join(direpa_publish, "version.txt")
-    version=None
-    with open(filenpa_version, "r") as f:
-        version=f.read().strip()
-
+def zip_release(app_name, direpa_dst, direpa_publish):
+    filenpa_webconfig=os.path.join(direpa_publish, "Web.config")
+    version=etree.parse(filenpa_webconfig).getroot().find("./appSettings/add[@key='VERSION']").attrib["value"]
+  
     filer_release="{}-{}".format(app_name, version)
-    direpa_publish_parent=os.path.dirname(direpa_publish)
-    filerpa_release=os.path.join(direpa_publish_parent, filer_release)
+    filerpa_release=os.path.join(direpa_dst, filer_release)
     filenpa_release=filerpa_release+".zip"
     if os.path.exists(filenpa_release):
-        print("File Already Exists '{}'".format(filenpa_release))
-        print("Change App Version or Delete File")
+        msg.warning("File Already Exists '{}'".format(filenpa_release))
+        msg.error("Change App Version or Delete File")
         sys.exit(1)
 
     shutil.make_archive(filerpa_release, 'zip', direpa_publish)
-    print("File created '{}'".format(filenpa_release))
+    msg.success("File created '{}'".format(filenpa_release))
 
 def set_documentation(direpa_root):
     direpa_src=os.path.join(direpa_root)
