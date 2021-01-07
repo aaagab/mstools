@@ -14,6 +14,7 @@ from .csproj_update import csproj_update_files, is_project_need_build
 from .get_profile import get_profile
 
 from ..gpkgs import message as msg
+from ..gpkgs.prompt import prompt_boolean
 
 def publish(
     app_name,
@@ -182,8 +183,11 @@ def zip_release(app_name, direpa_dst, direpa_publish):
     filenpa_release=filerpa_release+".zip"
     if os.path.exists(filenpa_release):
         msg.warning("File Already Exists '{}'".format(filenpa_release))
-        msg.error("Change App Version or Delete File")
-        sys.exit(1)
+        if prompt_boolean("Do you want to overwrite it") is True:
+            os.remove(filenpa_release)
+        else:
+            msg.error("Change App Version or Delete File")
+            sys.exit(1)
 
     shutil.make_archive(filerpa_release, 'zip', direpa_publish)
     msg.success("File created '{}'".format(filenpa_release))
