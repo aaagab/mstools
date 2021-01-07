@@ -154,7 +154,7 @@ if __name__ == "__main__":
         is_pre_deployed=False
         if args.pre_deploy.here:
             is_pre_deployed=True
-            if os.system(pre_deploy) != 0:
+            if os.system(arg.pre_deploy.value) != 0:
                 pkg.msg.error("pre-deploy script failed '{}'".format(arg.pre_deploy.value), exit=1)
 
         if args.zip_release.here is True:
