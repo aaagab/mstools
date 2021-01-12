@@ -145,7 +145,11 @@ def publish(
     elif rebuild_frontend is True:
         direpa_root_client=os.path.join(direpa_root, "App")
         direpa_publish_client=os.path.join(direpa_publish, "App")
-        if os.system(r'robocopy "{}" "{}" /MIR /FFT /Z /XA:H /W:5 /njh /njs /ndl /nc /ns'.format(direpa_root_client, direpa_publish_client)) != 0:
+        cmd=r'robocopy "{}" "{}" /MIR /FFT /Z /XA:H /W:5 /njh /njs /ndl /nc /ns'.format(direpa_root_client, direpa_publish_client)
+        print(cmd)
+        process=subprocess.Popen(cmd)
+        process.communicate()
+        if process.returncode != 0:
             sys.exit(1)
         print("robocopy success")
         return True
