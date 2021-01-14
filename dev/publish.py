@@ -148,9 +148,15 @@ def publish(
         cmd=r'robocopy "{}" "{}" /MIR /FFT /Z /XA:H /W:5 /njh /njs /ndl /nc /ns'.format(direpa_root_client, direpa_publish_client)
         print(cmd)
         process=subprocess.Popen(cmd)
-        process.communicate()
-        if process.returncode != 0:
+        stdout, stderr=process.communicate()
+
+        robocopy_error=get_robocopy_error(process.returncode)
+        if robocopy_error is not None:
+            print(process.returncode)
+            print(robocopy_error)
+            print(stderr)
             sys.exit(1)
+
         print("robocopy success")
         return True
         # deploy_path_client=os.path.join(deploy_path, "App")
@@ -159,6 +165,33 @@ def publish(
     else:
         msg.info("Publishing Project '{}' is already up-to-date".format(app_name))
         return False
+
+def get_robocopy_error(code):
+    dy_errors={
+        16: "echo ***FATAL ERROR*** & goto end",
+        15: "OKCOPY + FAIL + MISMATCHES + XTRA & goto end",
+        14: "FAIL + MISMATCHES + XTRA & goto end",
+        13: "OKCOPY + FAIL + MISMATCHES & goto end",
+        12: "FAIL + MISMATCHES& goto end",
+        11: "OKCOPY + FAIL + XTRA & goto end",
+        10: "FAIL + XTRA & goto end",
+        9: "OKCOPY + FAIL & goto end",
+        8: "FAIL & goto end",
+        7: "OKCOPY + MISMATCHES + XTRA & goto end",
+        6: "MISMATCHES + XTRA & goto end",
+        5: "OKCOPY + MISMATCHES & goto end",
+        4: "MISMATCHES & goto end",
+        3: "OKCOPY + XTRA & goto end",
+        2: "XTRA & goto end",
+        1: "OKCOPY & goto end",
+        0: "OKCOPY No Change & goto end",
+    }
+
+    message=dy_errors[code]
+    if "OKCOPY" in message:
+        return None
+    else:
+        return message
     
 def get_webconfig_profile(direpa_publish):
     filenpa_webconfig=os.path.join(direpa_publish, "Web.config")
