@@ -52,48 +52,90 @@ def publish(
     rebuild_frontend=False
     rebuild_fullstack=False
 
+    rebuild=False
+    directories_to_sync=[]
+    filenpas_to_sync=[]
+
     if rebuild_mode == "frontend":
-        rebuild_frontend=True
+        rebuild=False
+        directories_to_sync=["App"]
     elif rebuild_mode == "fullstack":
-        rebuild_fullstack=True
+        rebuild=True
     elif rebuild_mode == "any":
         ### is_project_need_build, 
         # I also need to check if project need pushed.
         # because if database has been updated then project needs to be pushed again.
         filenpa_publish_assembly=os.path.join(direpa_publish, "bin", os.path.basename(filenpa_assembly))
         if not os.path.exists(filenpa_publish_assembly):
-            rebuild_fullstack=True
+            rebuild=True
         else:
             previous_profile=get_webconfig_profile(direpa_publish)
             if previous_profile is None or previous_profile != profile_name:
-                rebuild_fullstack=True
+                rebuild=True
+            else:
+                date_filenpa_publish_assembly=os.path.getmtime(filenpa_publish_assembly)
+                date_filenpa_assembly=os.path.getmtime(filenpa_assembly)
+                if date_filenpa_assembly > date_filenpa_publish_assembly:
+                    rebuild=True
 
-        if rebuild_fullstack is False:
+        # pprint(filenpa_assembly)
+        if rebuild is False:
             filenpas=is_project_need_build(
                 debug,
                 direpa_root,
                 csproj_xml_tree,
                 filenpa_assembly,
                 filenpa_csproj,
-                return_filenpas=True
+                return_filenpas=True,
             )
 
             for filenpa in filenpas:
                 filenrel=os.path.relpath(filenpa, direpa_root)
-                elems=filenrel.split(os.sep)
-                if len(elems) > 1 and elems[0] == "App":
-                    rebuild_frontend=True
-                else:
-                    rebuild_fullstack=True
-                    break
+                filerrel, ext = os.path.splitext(filenrel)
 
-            if rebuild_frontend is False and rebuild_fullstack is False:
-                date_filenpa_publish_assembly=os.path.getmtime(filenpa_publish_assembly)
-                date_filenpa_assembly=os.path.getmtime(filenpa_assembly)
-                if date_filenpa_assembly > date_filenpa_publish_assembly:
-                    rebuild_fullstack=True
-                
-    if rebuild_fullstack is True:
+                if ext in [
+                    ".asax",
+                    ".config",
+                    ".cs",
+                    # ".cshtml",
+                    ".csproj",
+                    ".pubxml",
+                    ".sln",
+                    ".user",
+                ]:
+                    rebuild=True
+                    break
+                else:
+                    elems=filerrel.split(os.sep)
+                    # print(filenpa)
+                    if len(elems) == 1:
+                        rebuild=True
+                        break
+                    else:
+                        filenpa_pub=os.path.join(direpa_publish, filenrel)
+                        update_file=False
+                        if os.path.exists(filenpa_pub):
+                            date_filenpa_pub=os.path.getmtime(filenpa_pub)
+                            date_filenpa=os.path.getmtime(filenpa)
+                            if date_filenpa != date_filenpa_pub:
+                                update_file=True
+                        else:
+                            update_file=True
+
+                        if update_file is True:
+                            direl_sync="/".join(elems[:-1])
+                            if direl_sync not in directories_to_sync:
+                                found=False
+                                for tmp_dir in directories_to_sync:
+                                    if len(direl_sync) > len(tmp_dir):
+                                        if direl_sync[:len(tmp_dir)] == tmp_dir:
+                                            found=True
+                                            break
+                                if found is False:
+                                    filenpas_to_sync.append(filenpa)
+                                    directories_to_sync.append(direl_sync)
+
+    if rebuild is True:
         # make sure these files are recreated for new check on is_project_need_build, they are the reference date to decide if is_project_need_build
         for filenpa in [
             filenpa_assembly,
@@ -142,29 +184,27 @@ def publish(
         else:
             sys.exit(1)
 
-    elif rebuild_frontend is True:
-        direpa_root_client=os.path.join(direpa_root, "App")
-        direpa_publish_client=os.path.join(direpa_publish, "App")
-        cmd=r'robocopy "{}" "{}" /MIR /FFT /Z /XA:H /W:5 /njh /njs /ndl /nc /ns'.format(direpa_root_client, direpa_publish_client)
-        print(cmd)
-        process=subprocess.Popen(cmd)
-        stdout, stderr=process.communicate()
+    elif len(directories_to_sync) == 0:
+        msg.info("Publishing Project '{}' is already up-to-date".format(app_name))
+        return False
+    else:
+        for direl_sync in directories_to_sync:
+            direpa_root_client=os.path.normpath(os.path.join(direpa_root, direl_sync))
+            direpa_publish_client=os.path.normpath(os.path.join(direpa_publish, direl_sync))
+            cmd=r'robocopy "{}" "{}" /MIR /FFT /Z /XA:H /W:5 /njh /njs /ndl /nc /ns'.format(direpa_root_client, direpa_publish_client)
+            print(cmd)
+            process=subprocess.Popen(cmd)
+            stdout, stderr=process.communicate()
 
-        robocopy_error=get_robocopy_error(process.returncode)
-        if robocopy_error is not None:
-            print(process.returncode)
-            print(robocopy_error)
-            print(stderr)
-            sys.exit(1)
+            robocopy_error=get_robocopy_error(process.returncode)
+            if robocopy_error is not None:
+                print(process.returncode)
+                print(robocopy_error)
+                print(stderr)
+                sys.exit(1)
 
         print("robocopy success")
         return True
-        # deploy_path_client=os.path.join(deploy_path, "App")
-        # os.system(r'robocopy "{}" "{}" /MIR /FFT /Z /XA:H /W:5 /njh /njs /ndl /nc /ns'.format(direpa_publish_client, deploy_path_client))
-        # print("Front End updated")
-    else:
-        msg.info("Publishing Project '{}' is already up-to-date".format(app_name))
-        return False
 
 def get_robocopy_error(code):
     dy_errors={
