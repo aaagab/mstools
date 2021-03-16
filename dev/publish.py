@@ -139,6 +139,14 @@ def publish(
                                     directories_to_sync.append(direl_sync)
 
     if rebuild is True:
+        # make sure these files are recreated for new check on is_project_need_build, they are the reference date to decide if is_project_need_build
+        for filenpa in [
+            filenpa_assembly,
+            filenpa_cache_assembly,
+        ]:
+            if os.path.exists(filenpa):
+                os.remove(filenpa)
+                
         # clear logs
         if os.path.exists(filenpa_log):
             open(filenpa_log, "w").close()
@@ -173,14 +181,6 @@ def publish(
         process.communicate()
       
         if process.returncode == 0:
-            # make sure these files are recreated for new check on is_project_need_build, they are the reference date to decide if is_project_need_build
-            for filenpa in [
-                filenpa_assembly,
-                filenpa_cache_assembly,
-            ]:
-                if os.path.exists(filenpa):
-                    os.remove(filenpa)
-
             print()
             print("msbuild.exe success")
             return True
