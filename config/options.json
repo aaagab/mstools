@@ -33,7 +33,7 @@
         "info": "display debugging message"
     },
     "deploy": {
-        "args": "pre_deploy,exclude,profile,push,webconfig",
+        "args": "pre_deploy,exclude,profile,include,webconfig",
         "required": "profile"
 
     },
@@ -85,11 +85,11 @@
         "info": "if you add the --deploy argument then deploy will be executed only if the publish build is new, or webconfig has been modified or pre-deploy scripts has been executed",
         "required": "profile,rebuild"
     },
-    "push": {
-        "info": "given a json array of either string path or dictionary with src path and dst path, then push only those path to direpa_deploy instead of the whole project",
+    "include": {
+        "info": "given relative paths, push only these paths to the project, instead of the whole project.",
         "nested": true,
-        "type": "json",
-        "values": "JSON"
+        "nvalues": "+",
+        "values": "RELATIVE_PATH"
     },
     "slim": {
         "args": "link",
