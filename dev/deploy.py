@@ -9,10 +9,23 @@ import subprocess
 import shutil
 import sys
 import tempfile
+# import threading
 
 from ..gpkgs import message as msg
 from ..gpkgs import shell_helpers as shell
 from ..gpkgs.prompt import prompt_boolean
+
+def check_direpa_ftp_exists(winscp_profile, direpa_ftp, prompt_directory):
+    if winscp_cmd(winscp_profile, "stat {}".format(direpa_ftp), fail=False) == 1:
+        if prompt_directory is True:
+            msg.warning("Not found: {}".format(direpa_ftp))
+            if prompt_boolean("Do you want to create that folder on ftp"):
+                winscp_cmd(winscp_profile, "mkdir \"{}\"".format(direpa_ftp), fail=True)
+                msg.success("Created '{}'".format(direpa_ftp))
+            else:
+                msg.error("ftp path not found '{}'".format(direpa_ftp), exit=1)
+        else:
+            msg.error("ftp path not found '{}'".format(direpa_ftp), exit=1)
 
 def deploy(
     deploy_path,
@@ -35,10 +48,7 @@ def deploy(
         direpa_ftp_dst=deploy_path[6+len(winscp_profile):].replace("\\", "/")
         deploy_paths=get_paths(direpa_ftp_dst, direpa_publish, include_paths)
 
-        direpa_not_found=(winscp_cmd(winscp_profile, "stat {}".format(direpa_ftp_dst), fail=False) == 1)
-        if direpa_not_found:
-            msg.error("ftp path not found '{}'".format(direpa_ftp_dst), exit=1)
-        # cmd_sync=r'synchronize remote -mirror -delete -criteria=time -transfer=automatic -filemask="| */App_Data/log.txt; */Uploads/; */Logs/" "{}" "{}"'
+        check_direpa_ftp_exists(winscp_profile, direpa_ftp_dst, prompt_directory=False)
         filemask=get_filemask(direpa_publish, direpa_ftp_dst, exclude_paths, exclude_default_paths)
         cmd_sync=r'synchronize remote -mirror -delete -criteria=time -transfer=automatic{} "{{}}" "{{}}"'.format(" "+filemask)
 
@@ -47,7 +57,7 @@ def deploy(
                 direpa_publish,
                 direpa_ftp_dst,
             )
-            winscp_cmd(winscp_profile, cmd)
+            winscp_cmd(winscp_profile, cmd, fail=True)
         else:
             for dy_path in deploy_paths:
                 if dy_path["type"] == "file":
@@ -55,13 +65,15 @@ def deploy(
                         dy_path["src"].replace("/", "\\"),
                         os.path.dirname(dy_path["dst"])+"/",
                     )
-                    winscp_cmd(winscp_profile, cmd)
+                    winscp_cmd(winscp_profile, cmd, fail=False)
                 elif dy_path["type"] == "dir":
                     cmd=cmd_sync.format(
                         dy_path["src"],
                         dy_path["dst"],
                     )
-                    winscp_cmd(winscp_profile, cmd)
+                    if winscp_cmd(winscp_profile, cmd, fail=False) == 1:
+                        check_direpa_ftp_exists(winscp_profile, dy_path["dst"], prompt_directory=True)
+                        winscp_cmd(winscp_profile, cmd, fail=True)
     else:
         deploy_path=os.path.normpath(deploy_path)
         deploy_paths=get_paths(deploy_path, direpa_publish, push_only_paths)
@@ -179,7 +191,7 @@ def get_filemask(direpa_src, direpa_dst, exclude_paths, exclude_default_paths):
 
     return filemask
 
-def winscp_cmd(winscp_profile, cmd, fail=True):
+def winscp_cmd(winscp_profile, cmd, fail):
     filenpa_tmp=tempfile.TemporaryFile().name
     msg.info(cmd)
     with open(filenpa_tmp, "w") as f:
@@ -190,31 +202,12 @@ def winscp_cmd(winscp_profile, cmd, fail=True):
         winscp_profile,
         "/script={}".format(filenpa_tmp),
     ]
-
-    proc = subprocess.Popen(tmp_cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-    direpa_not_found=None
-    for line in iter(proc.stdout.readline, b''):
-        tmp_line=line.decode().rstrip()
-        print(tmp_line)
-        if fail is True:
-            reg_not_found=re.match(r"CWD failed. \"(?P<direpa>.+?)\"?: directory not found.", tmp_line)
-            if reg_not_found:
-                direpa_not_found=reg_not_found.group("direpa")
-
-    proc.wait()
+    proc=subprocess.Popen(tmp_cmd)
+    proc.communicate()
     os.remove(filenpa_tmp)
     if fail is True:
         if proc.returncode != 0:
-            if direpa_not_found is not None:
-                msg.warning("Not found: {}".format(direpa_not_found))
-                if prompt_boolean("Do you want to create that folder on ftp"):
-                    winscp_cmd(winscp_profile, "mkdir \"{}\"".format(direpa_not_found))
-                    return winscp_cmd(winscp_profile, cmd)
-                else:
-                    msg.error("failed '{}'".format(tmp_cmd), exit=1)
-            else:
-                msg.error("failed '{}'".format(tmp_cmd), exit=1)
-
+            msg.error("failed '{}'".format(tmp_cmd), exit=1)
     return proc.returncode
 
 def get_paths(
