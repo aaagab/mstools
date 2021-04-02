@@ -176,7 +176,7 @@ if __name__ == "__main__":
                 direpa_publish=profile["direpa_publish"],
                 filenpa_msdeploy=dy_conf["filenpa_msdeploy"],
                 exclude_paths=args.exclude.values,
-                push_paths=args.push.value,
+                include_paths=args.include.values,
             )
 
     elif args.csc.here:
