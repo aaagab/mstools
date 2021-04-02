@@ -12,30 +12,35 @@ import tempfile
 
 from ..gpkgs import message as msg
 from ..gpkgs import shell_helpers as shell
+from ..gpkgs.prompt import prompt_boolean
 
 def deploy(
     deploy_path,
     direpa_publish,
     filenpa_msdeploy,
     exclude_paths,
-    push_paths,
+    include_paths,
 ):
     cmd=[]
     filenpa_tmp=None
     success=False
     if deploy_path[:6] == "ftp://":
-        defaults="*/App_Data/log.txt; */Uploads/; */Logs/"
-        filemask=get_filemask(direpa_publish, exclude_paths, defaults)
+        exclude_default_paths=[
+            "App_Data/log.txt", 
+            "Uploads/", 
+            "Logs/",
+        ]
 
         winscp_profile=deploy_path[6:].split("/")[0]
         direpa_ftp_dst=deploy_path[6+len(winscp_profile):].replace("\\", "/")
-        deploy_paths=get_paths(direpa_ftp_dst, direpa_publish, push_paths)
+        deploy_paths=get_paths(direpa_ftp_dst, direpa_publish, include_paths)
 
         direpa_not_found=(winscp_cmd(winscp_profile, "stat {}".format(direpa_ftp_dst), fail=False) == 1)
         if direpa_not_found:
             msg.error("ftp path not found '{}'".format(direpa_ftp_dst), exit=1)
         # cmd_sync=r'synchronize remote -mirror -delete -criteria=time -transfer=automatic -filemask="| */App_Data/log.txt; */Uploads/; */Logs/" "{}" "{}"'
-        cmd_sync=r'synchronize remote -mirror -delete -criteria=time -transfer=automatic{} "{{}}" "{{}}"'.format(filemask)
+        filemask=get_filemask(direpa_publish, direpa_ftp_dst, exclude_paths, exclude_default_paths)
+        cmd_sync=r'synchronize remote -mirror -delete -criteria=time -transfer=automatic{} "{{}}" "{{}}"'.format(" "+filemask)
 
         if deploy_paths is None:
             cmd=cmd_sync.format(
@@ -45,9 +50,6 @@ def deploy(
             winscp_cmd(winscp_profile, cmd)
         else:
             for dy_path in deploy_paths:
-                direpa_not_found=(winscp_cmd(winscp_profile, "stat {}".format(dy_path["direpa_dst"]), fail=False) == 1)
-                if direpa_not_found:
-                    winscp_cmd(winscp_profile, "mkdir \"{}\"".format(dy_path["direpa_dst"]))
                 if dy_path["type"] == "file":
                     cmd="put \"{}\" \"{}\"".format(
                         dy_path["src"].replace("/", "\\"),
@@ -55,9 +57,6 @@ def deploy(
                     )
                     winscp_cmd(winscp_profile, cmd)
                 elif dy_path["type"] == "dir":
-                    direpa_not_found=(winscp_cmd(winscp_profile, "stat {}".format(dy_path["dst"]), fail=False) == 1)
-                    if direpa_not_found:
-                        winscp_cmd(winscp_profile, "mkdir \"{}\"".format(dy_path["dst"]))
                     cmd=cmd_sync.format(
                         dy_path["src"],
                         dy_path["dst"],
@@ -65,7 +64,7 @@ def deploy(
                     winscp_cmd(winscp_profile, cmd)
     else:
         deploy_path=os.path.normpath(deploy_path)
-        deploy_paths=get_paths(deploy_path, direpa_publish, push_paths)
+        deploy_paths=get_paths(deploy_path, direpa_publish, push_only_paths)
 
         if deploy_paths is None:
             # msdeploy is needed because msbuild can't preserve an Uploads folder when updating and removing all the rest.
@@ -108,24 +107,27 @@ def deploy(
 
     msg.success("deploy completed")
 
-def get_filemask(direpa_publish, exclude_paths, defaults):
-    tmp_exclude_paths=[]
-    for user_elem in exclude_paths:
+def get_filemask(direpa_src, direpa_dst, exclude_paths, exclude_default_paths):
+    dy_paths=dict(
+        abs=[],
+        rel=[],
+    )
+
+    tmp_direpa_src=direpa_src.replace("\\", "/")
+    tmp_direpa_dst=direpa_dst.replace("\\", "/")
+
+    for tmp_path in exclude_paths:
         found=False
-        if os.path.isabs(user_elem):
-            msg.error("for --deploy --ignore path must be relative '{}'".format(user_elem), exit=1)
-            if user_elem[0] in ["\\", "/"]:
-                user_elem=user_elem[1:]
-        path_rel_elem_user=user_elem.replace("\\", "/")
+        if os.path.isabs(tmp_path):
+            msg.error("for --deploy --{} path must be relative '{}'".format(path_type, tmp_path), exit=1)
+            if tmp_path[0] in ["\\", "/"]:
+                tmp_path=tmp_path[1:]
+        path_rel_elem_user=tmp_path.replace("\\", "/")
         level_user=path_rel_elem_user.count("/")+1
-        # print("\nlevel_user", level_user,"path_rel_elem_user", "'", path_rel_elem_user, "'")
 
-        for path, directories, files in os.walk(direpa_publish):
-            path_rel=path.replace(direpa_publish, "").replace("\\", "/")
+        for path, directories, files in os.walk(direpa_src):
+            path_rel=path.replace(direpa_src, "").replace("\\", "/")
             
-            if "roslyn" in path:
-                print(path)
-
             if len(path_rel) > 0:
                 if path_rel[0] == "/":
                     path_rel=path_rel[1:]
@@ -136,27 +138,20 @@ def get_filemask(direpa_publish, exclude_paths, defaults):
                     level=len(path_rel.split("/"))+1
                 else:
                     level=2
-            # print("#######################################")
-            # print("level", level,"path_rel", "'", path_rel, "'")
 
             if level < level_user:
                 continue
             elif level == level_user:
-                # print("level:", level, "level_user:", level_user)
-            
                 count=0
                 for elems in [directories, files]:
                     for elem in elems:
                         path_rel_elem=os.path.join(path_rel, elem).replace("\\", "/")
                         if path_rel_elem.lower() == path_rel_elem_user.lower():
                             found=True
-                            # print("----------------------------")
-                            # print("path_rel_elem", path_rel_elem)
-                            # print("path_rel_elem_user", path_rel_elem_user)
-                            tmp_str="*/{}".format(path_rel_elem)
+                            tmp_str=path_rel_elem
                             if count == 0:
                                 tmp_str+="/"
-                            tmp_exclude_paths.append(tmp_str)
+                            dy_paths["rel"].append(tmp_str)
                             break
                     count+=1
                     if found is True:
@@ -165,18 +160,23 @@ def get_filemask(direpa_publish, exclude_paths, defaults):
                     break
             else:
                 pass
-                # break
         
         if found is False:
-            msg.error("for --deploy --ignore relative path not found '{}'".format(user_elem), exit=1)
+            msg.error("for --deploy --{} relative path not found '{}'".format(path_type, tmp_path), exit=1)
 
-    filemask=" -filemask=\"| {}".format(
-        defaults
-    )
-    if len(tmp_exclude_paths) > 0:
-        filemask+="; "+"; ".join(sorted(tmp_exclude_paths))
+    has_paths=False
+    dy_paths["rel"].extend(exclude_default_paths)
 
-    filemask+="\""
+    for rel_path in dy_paths["rel"]:
+        has_paths=True
+        rel_path=rel_path.replace("\\", "/")
+        dy_paths["abs"].append("{}/{}".format(tmp_direpa_src, rel_path))
+        dy_paths["abs"].append("{}/{}".format(tmp_direpa_dst, rel_path))
+
+    filemask=""
+    if has_paths is True:
+        filemask="-filemask=\" | {}\"".format("; ".join(sorted(dy_paths["abs"])))
+
     return filemask
 
 def winscp_cmd(winscp_profile, cmd, fail=True):
@@ -185,69 +185,86 @@ def winscp_cmd(winscp_profile, cmd, fail=True):
     with open(filenpa_tmp, "w") as f:
         f.write("{}\n".format(cmd))
         f.write("exit\n")
-    cmd=[
+    tmp_cmd=[
         "winscp.com",
         winscp_profile,
         "/script={}".format(filenpa_tmp),
     ]
-    proc=subprocess.Popen(cmd)
-    stdout, stderr=proc.communicate()
-    os.remove(filenpa_tmp)
 
+    proc = subprocess.Popen(tmp_cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    direpa_not_found=None
+    for line in iter(proc.stdout.readline, b''):
+        tmp_line=line.decode().rstrip()
+        print(tmp_line)
+        if fail is True:
+            reg_not_found=re.match(r"CWD failed. \"(?P<direpa>.+?)\"?: directory not found.", tmp_line)
+            if reg_not_found:
+                direpa_not_found=reg_not_found.group("direpa")
+
+    proc.wait()
+    os.remove(filenpa_tmp)
     if fail is True:
         if proc.returncode != 0:
-            msg.error("failed '{}'".format(cmd), exit=1)
+            if direpa_not_found is not None:
+                msg.warning("Not found: {}".format(direpa_not_found))
+                if prompt_boolean("Do you want to create that folder on ftp"):
+                    winscp_cmd(winscp_profile, "mkdir \"{}\"".format(direpa_not_found))
+                    return winscp_cmd(winscp_profile, cmd)
+                else:
+                    msg.error("failed '{}'".format(tmp_cmd), exit=1)
+            else:
+                msg.error("failed '{}'".format(tmp_cmd), exit=1)
 
     return proc.returncode
 
 def get_paths(
     direpa_deploy,
     direpa_publish,
-    push_paths,
+    push_only_paths,
 ):
     direpa_publish=direpa_publish.replace("\\", "/")
     direpa_deploy=direpa_deploy.replace("\\", "/")
 
-    if isinstance(push_paths, str):
-        push_paths=[push_paths]
+    # if isinstance(push_only_paths, str):
+        # push_only_paths=[push_only_paths]
 
     dy_paths=[]
-    if push_paths is not None:
-        for elem in push_paths:
+    if push_only_paths is not None:
+        for elem in push_only_paths:
             elem=elem.replace("\\\\", "\\").replace("\\", "/")
-            if isinstance(elem, str):
-                dy_path=dict()
-                path_src=elem
-                if os.path.isabs(elem) is False:
-                    path_src=os.path.join(direpa_publish, elem)
+            # if isinstance(elem, str):
+            dy_path=dict()
+            path_src=elem
+            if os.path.isabs(elem) is False:
+                path_src=os.path.join(direpa_publish, elem)
 
-                if not os.path.exists(path_src):
-                    msg.error("push paths src not found '{}'".format(path_src), exit=1)
+            if not os.path.exists(path_src):
+                msg.error("push paths src not found '{}'".format(path_src), exit=1)
 
-                dy_path["src"]=os.path.normpath(path_src).replace("\\", "/")
-                dy_path["type"]=None
-                if os.path.isdir(path_src):
-                    dy_path["type"]="dir"
-                elif os.path.isfile(path_src):
-                    dy_path["type"]="file"
-                else:
-                    msg.error("push paths src is not a file or a dir '{}'".format(path_src), exit=1)
-
-                path_rel=re.sub(r"^{}/".format(direpa_publish), "", dy_path["src"])
-                if path_rel == dy_path["src"]:
-                    msg.error("push paths src impossible to extract path_rel from '{}'".format(path_src), exit=1)
-
-                dy_path["dst"]=os.path.join(direpa_deploy, path_rel).replace("\\", "/")
-                dy_path["direpa_dst"]=os.path.dirname(dy_path["dst"])
-
-                dy_paths.append(dy_path)
-
-            elif isinstance(elem, dict):
-                msg.error("push paths dict function not implement yet", exit=1)
-                # "here" puth a check on direpa_deploy and dst if different then error
-                pass
+            dy_path["src"]=os.path.normpath(path_src).replace("\\", "/")
+            dy_path["type"]=None
+            if os.path.isdir(path_src):
+                dy_path["type"]="dir"
+            elif os.path.isfile(path_src):
+                dy_path["type"]="file"
             else:
-                msg.error("push paths expected list or str not '{}' with '{}'".format(type(elem), elem), exit=1)
+                msg.error("push paths src is not a file or a dir '{}'".format(path_src), exit=1)
+
+            path_rel=re.sub(r"^{}/".format(direpa_publish), "", dy_path["src"])
+            if path_rel == dy_path["src"]:
+                msg.error("push paths src impossible to extract path_rel from '{}'".format(path_src), exit=1)
+
+            dy_path["dst"]=os.path.join(direpa_deploy, path_rel).replace("\\", "/")
+            dy_path["direpa_dst"]=os.path.dirname(dy_path["dst"])
+
+            dy_paths.append(dy_path)
+
+            # elif isinstance(elem, dict):
+                # msg.error("push paths dict function not implement yet", exit=1)
+                # # "here" puth a check on direpa_deploy and dst if different then error
+                # pass
+            # else:
+                # msg.error("push paths expected list or str not '{}' with '{}'".format(type(elem), elem), exit=1)
 
     if len(dy_paths) > 0:
         return dy_paths

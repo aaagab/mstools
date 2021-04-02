@@ -20,6 +20,15 @@ process=subprocess.Popen(cmd)
 process.communicate()
 ```
 
+for -filemask */Logs/ will match all the logs folder even the nested one and you don't want that. You have to provide full path and the full path must come from source and not from destination.
+"" I believe the problem is it also check on src and dst so for instance  
+Exclusions:  
+- if I want to exclude a folder that is in source, and not in dst. Then I use absolute path from src in filemask
+- if I want to exclude a folder that is not in source, Then I use absolute path from dst in filemask
+- if folder in src and folder in dst (for instance logs) but you don't want to synchronize that folder at all you need to add both absolute src and absolute dst. The subtulties is that if dir is present on dst only and excluded on dst it is then ignored and not erased but if it exists also in src but excluded on dst then it is still synchronized, only that it is not deleted first so it means that any existing files on dst is not going to be erased or overwritten if they don't exist on src. However src is still going to synchronize folder with dst. so folder needs to be excluded on both src and dst in the case the folder needs to be ignored on dst. User put generally */logs so it ignores in both dst and src, however */logs also ignore any nested folders and user may not want that. So the only solution for folder to ignore at dst is to also ignore them at src. Okay so actually it is not exactly that still, when you want to ignore absolute path, then you have exclude both src and dst in filemask. Otherwise If I only exclude absolute in src and it exists in dst, then it is deleted from dst.
+- Folder should always ends with forward slash in filemask. Files can also be included, and same story they have to be both puth in filemask absolute with src and dst. For instance if a folder is just included from source then it is always synchronize on destination even when not needed.
+- I was not able to make absolute path working with include in filemask, ""I believe I am able to make the exclude work but now I am even doubting that. Apparently include for directory only work with first children directories, as soon as you nest, winscp just ignore your filemask.
+
 With option -delete filemask filter for folder to exclude must be exclude the same folders from remote but also from local otherwise folders are deleted on remote if only remote is put.
 
 
