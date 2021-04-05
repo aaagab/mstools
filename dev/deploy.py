@@ -76,7 +76,7 @@ def deploy(
                         winscp_cmd(winscp_profile, cmd, fail=True)
     else:
         deploy_path=os.path.normpath(deploy_path)
-        deploy_paths=get_paths(deploy_path, direpa_publish, push_only_paths)
+        deploy_paths=get_paths(deploy_path, direpa_publish, include_paths)
 
         if deploy_paths is None:
             # msdeploy is needed because msbuild can't preserve an Uploads folder when updating and removing all the rest.
@@ -213,17 +213,17 @@ def winscp_cmd(winscp_profile, cmd, fail):
 def get_paths(
     direpa_deploy,
     direpa_publish,
-    push_only_paths,
+    include_paths,
 ):
     direpa_publish=direpa_publish.replace("\\", "/")
     direpa_deploy=direpa_deploy.replace("\\", "/")
 
-    # if isinstance(push_only_paths, str):
-        # push_only_paths=[push_only_paths]
+    # if isinstance(include_paths, str):
+        # include_paths=[include_paths]
 
     dy_paths=[]
-    if push_only_paths is not None:
-        for elem in push_only_paths:
+    if include_paths is not None:
+        for elem in include_paths:
             elem=elem.replace("\\\\", "\\").replace("\\", "/")
             # if isinstance(elem, str):
             dy_path=dict()
