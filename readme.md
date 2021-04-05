@@ -103,3 +103,6 @@ With option -delete filemask filter for folder to exclude must be exclude the sa
     }
 }
 ```
+
+for publish profiles there is an option to synchronize (mirror) files from sources to build: `/p:DeleteExistingFiles=True`  
+Odly that option does not work for folder in publish directory. So there is no way to automatically remove them, it has to be done manually.   
