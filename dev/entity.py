@@ -90,6 +90,7 @@ def entity(
             "-Force",
             "-IgnoreChanges",
             "-Script",
+            "-Verbose",
             "--show",
         ]
 
@@ -163,6 +164,7 @@ def entity(
                     cmd.append(dy_params["target"])
                 options.append("script")
                 options.append("force")
+                options.append("verbose")
                 if "-Script" in flags:
                     export_sql_script=True
             elif main_cmd == "Enable-Migrations":
@@ -353,7 +355,8 @@ def get_options(
             if "-IgnoreChanges" in flags:
                 tmp_options.append("--ignore-changes")
         elif option == "verbose":
-            tmp_options.append("--{}".format(option))
+            if "-Verbose" in flags:
+                tmp_options.append("--{}".format(option))
         elif option == "no-color":
             tmp_options.append("--{}".format(option))
         elif option == "prefix-output":
@@ -378,9 +381,6 @@ def get_options(
             tmp_options.append("{}".format(os.path.join(direpa_root, "Web.config")))
 
     return tmp_options
-
-def get_common_options():
-    return " --verbose --no-color --prefix-output"
 
 def get_entity_path(
     direpa_root,
