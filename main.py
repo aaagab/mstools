@@ -155,7 +155,7 @@ if __name__ == "__main__":
         if args.pre_deploy.here:
             is_pre_deployed=True
             if os.system(args.pre_deploy.value) != 0:
-                pkg.msg.error("pre-deploy script failed '{}'".format(arg.pre_deploy.value), exit=1)
+                pkg.msg.error("pre-deploy script failed '{}'".format(args.pre_deploy.value), exit=1)
 
         if args.zip_release.here is True:
             direpa_dst=args.zip_release.value
