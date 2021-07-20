@@ -214,6 +214,9 @@ def entity(
                 process.wait()
                 errcode = process.returncode
 
+                if errcode != 0:
+                    msg.error("mstools failed: {}".format(shlex.quote(" ".join(cmd))), exit=1)
+
                 if add_migration_filer is not None:
                     add_migration_csproj(
                         direpa_root,
