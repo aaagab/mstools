@@ -22,6 +22,8 @@ def entity(
     filenpa_assembly,
     filenpa_csproj,
     filenpa_msbuild,
+    force_build,
+    force_csproj,
     params,
     xml_root_namespace,
 ):
@@ -145,6 +147,8 @@ def entity(
 				filenpa_assembly,
 				filenpa_csproj,
 				filenpa_msbuild,
+                force_build=force_build,
+                force_csproj=force_csproj,
             )
             options=[]
             export_sql_script=False

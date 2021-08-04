@@ -15,6 +15,7 @@ def clean_migrations(
     direpa_migrations,    
     direpa_root,
     filenpa_csproj,
+    force=False,
 ):
     need_cleaning=False
     filenpas_migrations={}
@@ -113,6 +114,7 @@ def clean_migrations(
             csproj_xml_tree,
             direpa_root,
             filenpa_csproj,
+            force=force,
         )
 
     if need_cleaning is False:

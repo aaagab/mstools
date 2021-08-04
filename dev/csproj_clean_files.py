@@ -13,6 +13,7 @@ def csproj_clean_files(
     debug,
     direpa_root,
     filenpa_csproj,
+    force=False,
 ):
     xml_nodes=get_build_xml_nodes_csproj(csproj_xml_tree)
 
@@ -27,10 +28,11 @@ def csproj_clean_files(
         for node in remove_nodes:
             print(get_xml_str_without_namespace(csproj_xml_tree, node))
 
-        user_input=input("\nDo you want to continue (Y/n)? ")
-        if user_input.lower() == "n":
-            print("Operation cancelled")
-            sys.exit(1)
+        if force is False:
+            user_input=input("\nDo you want to continue (Y/n)? ")
+            if user_input.lower() == "n":
+                print("Operation cancelled")
+                sys.exit(1)
 
         for node in remove_nodes.copy():
             node.getparent().remove(node)
