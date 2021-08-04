@@ -15,6 +15,7 @@ def csproj_update_files(
     debug,
     direpa_root,
     filenpa_csproj,
+    force=False,
 ):
     if debug is True:
         print("updating '{}'".format(os.path.basename(filenpa_csproj)))
@@ -24,7 +25,8 @@ def csproj_update_files(
         csproj_xml_tree,
         debug,
         direpa_root,
-        filenpa_csproj
+        filenpa_csproj,
+        force,
     ) is True:
         next_xml_tree=get_xml_tree(filenpa_csproj)
     # csproj_xml needs to be regenerated
@@ -120,15 +122,17 @@ def build_project(
     filenpa_assembly,
     filenpa_csproj,
     filenpa_msbuild,
-    force=False
+    force_build=False,
+    force_csproj=False,
 ):
     csproj_update_files(
         csproj_xml_tree,
         debug,
         direpa_root,
         filenpa_csproj,
+        force=force_csproj,
     )
-    if force is True:
+    if force_build is True:
         build_execute(
             filenpa_csproj,
             filenpa_msbuild,
