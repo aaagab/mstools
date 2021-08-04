@@ -51,7 +51,8 @@ if __name__ == "__main__":
             filenpa_assembly=dy_csproj["filenpa_assembly"],
             filenpa_csproj=dy_csproj["filenpa_csproj"],
             filenpa_msbuild=dy_conf["filenpa_msbuild"],
-            force=args.force.here,
+            force_build=args.force_build.here,
+            force_csproj=args.force_csproj.here,
         )
     elif args.csproj.here:
         dy_csproj=pkg.get_dy_csproj(direpa_root=args.path_csproj.value)
@@ -88,6 +89,8 @@ if __name__ == "__main__":
             filenpa_assembly=dy_csproj["filenpa_assembly"],
             filenpa_csproj=dy_csproj["filenpa_csproj"],
             filenpa_msbuild=dy_conf["filenpa_msbuild"],
+            force_build=args.force_build.here,
+            force_csproj=args.force_csproj.here,
             params=args.db.value,
             xml_root_namespace=dy_csproj["xml_root_namespace"],
         )

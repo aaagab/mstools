@@ -4,7 +4,7 @@
         "nested": true
     },
     "build": {
-        "args": "force"
+        "args": "force_build,force_csproj"
     },
     "clean": {
         "info": "remove files to csproj if needed.",
@@ -25,6 +25,7 @@
         "args": "add,clean,update"
     },
     "db": {
+        "args": "force_build,force_csproj",
         "info": "wrapper access to entity db. If no cmd is given help is displayed.",
         "nvalues": "?",
         "values": "entity cmd"
@@ -48,10 +49,12 @@
         "info": "",
         "nested": true
     },
-    "force": {
+    "force_build": {
         "nested": true
     },
-
+    "force_csproj": {
+        "nested": true
+    },
     "link": {
         "info": "Gives Keywords to help findind the reference files for linking",
         "nested": true,
