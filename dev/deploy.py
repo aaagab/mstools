@@ -79,6 +79,7 @@ def deploy(
                         check_direpa_ftp_exists(winscp_profile, dy_path["dst"], prompt_directory=True)
                         winscp_cmd(winscp_profile, cmd, fail=True)
     else:
+        print(deploy_path)
         deploy_path=os.path.normpath(deploy_path)
         deploy_paths=get_paths(deploy_path, direpa_publish, include_paths)
 
