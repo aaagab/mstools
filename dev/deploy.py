@@ -37,6 +37,10 @@ def deploy(
     cmd=[]
     filenpa_tmp=None
     success=False
+
+    if deploy_path is None:
+        msg.error("deploy path is not set for selected profile.", exit=1)
+
     if deploy_path[:6] == "ftp://":
         exclude_default_paths=[
             "App_Data/log.txt", 
@@ -131,7 +135,7 @@ def get_filemask(direpa_src, direpa_dst, exclude_paths, exclude_default_paths):
     for tmp_path in exclude_paths:
         found=False
         if os.path.isabs(tmp_path):
-            msg.error("for --deploy --{} path must be relative '{}'".format(path_type, tmp_path), exit=1)
+            msg.error("for --deploy --exclude path must be relative '{}'".format(tmp_path), exit=1)
             if tmp_path[0] in ["\\", "/"]:
                 tmp_path=tmp_path[1:]
         path_rel_elem_user=tmp_path.replace("\\", "/")
@@ -174,7 +178,7 @@ def get_filemask(direpa_src, direpa_dst, exclude_paths, exclude_default_paths):
                 pass
         
         if found is False:
-            msg.error("for --deploy --{} relative path not found '{}'".format(path_type, tmp_path), exit=1)
+            msg.error("for --deploy --exclude relative path not found '{}'".format(tmp_path), exit=1)
 
     has_paths=False
     dy_paths["rel"].extend(exclude_default_paths)
