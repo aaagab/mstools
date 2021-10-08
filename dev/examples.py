@@ -16,9 +16,9 @@ def examples():
         mstools --publish -p proxy --any
 
         mstools --deploy -p proxy --push '"web.config"'
-        mstools -p mydev --deploy --exclude app scripts
-        mstools -p mydev --deploy --include App/app/divisions --exclude scripts
-        mstools --publish -p mydev -r any --deploy --exclude app scripts App_Data Content EmailTemplates bin\roslyn fonts Properties Views
+        (deprecated for ftp only) mstools -p mydev --deploy --exclude app scripts
+        (deprecated for ftp only) mstools -p mydev --deploy --include App/app/divisions --exclude scripts
+        (deprecated for ftp only) mstools --publish -p mydev -r any --deploy --exclude app scripts App_Data Content EmailTemplates bin\roslyn fonts Properties Views
         mstools --publish -p prod -r fullstack --pre-deploy _scripts\migration_copy_sql.py --zip-release
         mstools --run --main mydebug --params thisisparam --slim
         mstools --run --main mydebug --params thisisparam --exe
