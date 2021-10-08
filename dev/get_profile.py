@@ -61,13 +61,17 @@ def get_profile(
             child.text=""
             etree.ElementTree(node).write(filenpa_conf, encoding='utf-8', xml_declaration=True, pretty_print=True)
 
+    deploy_path=None
+    if "deploy_path" in conf_profiles[profile_name]:
+        if hostname in conf_profiles[profile_name]["deploy_path"]:
+            deploy_path=os.path.join(
+                conf_profiles[profile_name]["deploy_path"][hostname].replace("{user_profile}", os.path.expanduser("~")),
+                conf_apps[app_name]["direl"]
+            ).replace("\\", "/"),
 
     profile=dict(
         direpa_publish=os.path.normpath(os.path.join(direpa_root, "_publish", "build")),
-        deploy_path=os.path.join(
-            conf_profiles[profile_name]["deploy_path"][hostname].replace("{user_profile}", os.path.expanduser("~")),
-            conf_apps[app_name]["direl"]
-        ).replace("\\", "/"),
+        deploy_path=deploy_path,
         hostname_direl="",
         name=profile_name,
         web_config="",
