@@ -160,6 +160,7 @@ def publish(
             "/nologo",
             "/m",
             "/p:Configuration={}".format(profile_name.capitalize()),
+            # "/p:Platform=x86",
             "/p:DeleteExistingFiles=True",
             "/p:DeployOnBuild=True",
             "/p:ExcludeApp_Data=False",
