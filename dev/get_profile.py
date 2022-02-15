@@ -64,10 +64,23 @@ def get_profile(
     deploy_path=None
     if "deploy_path" in conf_profiles[profile_name]:
         if hostname in conf_profiles[profile_name]["deploy_path"]:
-            deploy_path=os.path.join(
-                conf_profiles[profile_name]["deploy_path"][hostname].replace("{user_profile}", os.path.expanduser("~")),
-                conf_apps[app_name]["direl"]
-            ).replace("\\", "/")
+            if app_name not in conf_apps:
+                msg.error("'{}' not found in conf '{}'".format(app_name, filenpa_apps))
+                print("example:")
+                print(json.dumps(dict(
+                    apps={
+                        "{}".format(app_name): dict(
+                            port=9020,
+                            direl="aa/{}".format(app_name)
+                        )
+                    },
+                )))
+                sys.exit(1)
+            else:
+                deploy_path=os.path.join(
+                    conf_profiles[profile_name]["deploy_path"][hostname].replace("{user_profile}", os.path.expanduser("~")),
+                    conf_apps[app_name]["direl"]
+                ).replace("\\", "/")
 
     profile=dict(
         direpa_publish=os.path.normpath(os.path.join(direpa_root, "_publish", "build")),

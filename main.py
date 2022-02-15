@@ -98,7 +98,6 @@ if __name__ == "__main__":
         pkg.examples()
     elif args.publish.here or args.deploy.here:
         dy_conf=get_dy_conf()
-
         dy_csproj=pkg.get_dy_csproj(direpa_root=args.path_csproj.value)
 
         profile=pkg.get_profile(
