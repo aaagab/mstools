@@ -44,22 +44,36 @@ def get_profile(
         else:
             msg.error("Path is needed for msbuild", exit=1)
 
-    profiles=[]
-    for elem in os.listdir(direpa_publish_profiles):
-        filer, ext = os.path.splitext(elem)
-        if ext == ".pubxml":
-            profiles.append(filer)
+    filenpa_profile=os.path.join(direpa_publish_profiles, "{}.pubxml".format(profile_name))
+    if not os.path.exists(filenpa_profile):
+        msg.warning("Not found '{}'".format(filenpa_profile))
+        print()
+        msg.warning("You may want to add the following line in your csproj:")
+        print("""   
+    <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == '{}|AnyCPU' ">
+        <DebugType>pdbonly</DebugType>
+        <Optimize>true</Optimize>
+        <OutputPath>bin</OutputPath>
+        <DefineConstants>TRACE</DefineConstants>
+        <ErrorReport>prompt</ErrorReport>
+        <WarningLevel>4</WarningLevel>
+    </PropertyGroup>
+    <ItemGroup>
+        <None Include="Properties\PublishProfiles\{}.pubxml"/>
+    </ItemGroup>
+            """.format(profile_name.capitalize(), profile_name))
 
-    missing_confs=set(sorted(conf_profiles)) - set(profiles)
-    if missing_confs:
-        nsmap = { None: "http://schemas.microsoft.com/developer/msbuild/2003" }
-        for missing_conf in missing_confs:
-            filenpa_conf=os.path.join(direpa_publish_profiles, "{}.pubxml".format(missing_conf))
+        if prompt_boolean("Create file"):
+            nsmap = { None: "http://schemas.microsoft.com/developer/msbuild/2003" }
             node = etree.Element('Project', nsmap=nsmap)
             node.set("ToolsVersion", "4.0")
             child=etree.SubElement(node, "PropertyGroup")
             child.text=""
-            etree.ElementTree(node).write(filenpa_conf, encoding='utf-8', xml_declaration=True, pretty_print=True)
+            etree.ElementTree(node).write(filenpa_profile, encoding='utf-8', xml_declaration=True, pretty_print=True)
+
+
+        else:
+            msg.error("Action cancelled", exit=1)
 
     deploy_path=None
     if "deploy_path" in conf_profiles[profile_name]:
