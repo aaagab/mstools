@@ -11,8 +11,6 @@ import sys
 import tempfile
 
 from .csproj_update import csproj_update_files, is_project_need_build
-from .get_profile import get_profile
-
 from ..gpkgs import message as msg
 from ..gpkgs.prompt import prompt_boolean
 

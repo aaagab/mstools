@@ -109,6 +109,7 @@ if __name__ == "__main__":
             filen_assembly=os.path.basename(dy_csproj["filenpa_assembly"]),
             profile_name=args.profile.value,
             profile_names=dy_conf["profile_names"],
+            to_deploy=args.deploy.here,
         )
 
         is_new_publishing=False
