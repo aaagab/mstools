@@ -22,6 +22,7 @@ def get_profile(
     filen_assembly,
     profile_name,
     profile_names,
+    to_deploy,
 ):
     # <?xml version="1.0" encoding="utf-8"?>
     # <Project ToolsVersion="4.0" 
@@ -31,9 +32,10 @@ def get_profile(
     # </Project>
     hostname=socket.gethostname().lower()
 
-    if profile_name not in profile_names:
-        print("Profile Unknown '{}' in '{}' > globals > confs".format(profile_name, filenpa_apps))
-        sys.exit(1)
+    if to_deploy is True:
+        if profile_name not in profile_names:
+            print("Profile Unknown '{}' in '{}' > globals > confs".format(profile_name, filenpa_apps))
+            sys.exit(1)
 
     direpa_publish_profiles=os.path.join(direpa_root, "Properties","PublishProfiles")
 
@@ -76,25 +78,26 @@ def get_profile(
             msg.error("Action cancelled", exit=1)
 
     deploy_path=None
-    if "deploy_path" in conf_profiles[profile_name]:
-        if hostname in conf_profiles[profile_name]["deploy_path"]:
-            if app_name not in conf_apps:
-                msg.error("'{}' not found in conf '{}'".format(app_name, filenpa_apps))
-                print("example:")
-                print(json.dumps(dict(
-                    apps={
-                        "{}".format(app_name): dict(
-                            port=9020,
-                            direl="aa/{}".format(app_name)
-                        )
-                    },
-                )))
-                sys.exit(1)
-            else:
-                deploy_path=os.path.join(
-                    conf_profiles[profile_name]["deploy_path"][hostname].replace("{user_profile}", os.path.expanduser("~")),
-                    conf_apps[app_name]["direl"]
-                ).replace("\\", "/")
+    if to_deploy is True:
+        if "deploy_path" in conf_profiles[profile_name]:
+            if hostname in conf_profiles[profile_name]["deploy_path"]:
+                if app_name not in conf_apps:
+                    msg.error("'{}' not found in conf '{}'".format(app_name, filenpa_apps))
+                    print("example:")
+                    print(json.dumps(dict(
+                        apps={
+                            "{}".format(app_name): dict(
+                                port=9020,
+                                direl="aa/{}".format(app_name)
+                            )
+                        },
+                    )))
+                    sys.exit(1)
+                else:
+                    deploy_path=os.path.join(
+                        conf_profiles[profile_name]["deploy_path"][hostname].replace("{user_profile}", os.path.expanduser("~")),
+                        conf_apps[app_name]["direl"]
+                    ).replace("\\", "/")
 
     profile=dict(
         direpa_publish=os.path.normpath(os.path.join(direpa_root, "_publish", "build")),
@@ -104,16 +107,17 @@ def get_profile(
         web_config="",
     )
 
-    if profile_name == "debug":
-        profile["hostname_direl"]="{}:{}".format(
-            conf_profiles[profile_name]["hostname"],
-            conf_apps[app_name]["port"]
-        )
-    else:
-        profile["hostname_direl"]="{}/{}".format(
-            conf_profiles[profile_name]["hostname"],
-            conf_apps[app_name]["direl"]
-        )
+    if to_deploy is True:
+        if profile_name == "debug":
+            profile["hostname_direl"]="{}:{}".format(
+                conf_profiles[profile_name]["hostname"],
+                conf_apps[app_name]["port"]
+            )
+        else:
+            profile["hostname_direl"]="{}/{}".format(
+                conf_profiles[profile_name]["hostname"],
+                conf_apps[app_name]["direl"]
+            )
 
     prefix=".{}".format(profile_name)
     if profile_name == "debug":
