@@ -35,7 +35,9 @@
     },
     "deploy": {
         "args": "pre_deploy,exclude,profile,include,webconfig",
-        "required": "profile"
+        "required": "profile",
+        "nvalues": "?",
+        "type": "directory"
 
     },
     "examples": {},
