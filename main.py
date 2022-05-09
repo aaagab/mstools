@@ -110,6 +110,7 @@ if __name__ == "__main__":
             profile_name=args.profile.value,
             profile_names=dy_conf["profile_names"],
             to_deploy=args.deploy.here,
+            direpa_deploy=args.deploy.value,
         )
 
         is_new_publishing=False
