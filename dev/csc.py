@@ -48,8 +48,6 @@ def csc(
 	os.makedirs(direpa_main, exist_ok=True)
 	filenpa_main=os.path.join(direpa_main, "main.cs")
 
-	print(filenpa_main)
-	
 	if not os.path.exists(filenpa_main):
 		print("'{}' not found".format(filenpa_main))
 		# user_choice="Y"
@@ -98,13 +96,16 @@ def csc(
 	elif mode == "fat" or mode == "slim":
 		excluded_bin_folders=[
 			"bin",
-			"conf",
+			# "conf",
+			# "_runtime",
 		]
 		excluded_bin_files=[
 		]
 		included_bin_extensions=[
-			".cs"
+			".cs",
+			".conf",
 		]
+		# print(ex)
 		filenpas_run=list(get_all_build_paths(
 			direpa_root=direpa_main,
 			excluded_bin_extensions=[],
@@ -112,6 +113,7 @@ def csc(
 			excluded_bin_folders=excluded_bin_folders,
 			included_bin_extensions=included_bin_extensions,
 		))
+
 
 		add_cmd=[]
 		extra_filenpa_runs=[]
@@ -147,8 +149,10 @@ def csc(
 				open(filenpa_conf, "w").close()
 			
 			existingReferences=[]
+			file_conf_old=""
 			with open(filenpa_conf, "r") as f:
-				lines=f.read().splitlines()
+				file_conf_old=f.read()
+				lines=file_conf_old.splitlines()
 				for line in lines:
 					line=line.strip()
 					if line:
@@ -181,12 +185,17 @@ def csc(
 					print("\nUncomment the above needed references if any from file '{}'".format(filenpa_conf))
 					sys.exit(1)
 
-			with open(filenpa_conf, 'w') as f:
-				for elem in paths:
-					prefix="# "
-					if elem in searched_references or elem in existingReferences:
-							prefix=""
-					f.write("{}{}\n".format(prefix, elem))
+			file_conf_new=""
+
+			for elem in paths:
+				prefix="# "
+				if elem in searched_references or elem in existingReferences:
+						prefix=""
+				file_conf_new+="{}{}\n".format(prefix, elem)
+
+			if file_conf_old != file_conf_new:
+				with open(filenpa_conf, 'w') as f:
+					f.write(file_conf_new)
 
 			with open(filenpa_conf, 'r') as f:
 				for line in f.read().splitlines():
@@ -201,8 +210,8 @@ def csc(
 
 
 		for filenpa_run in filenpas_run:
-			if filenpa_run != filenpa_main:
-				add_cmd=filenpa_run
+			if filenpa_run != filenpa_main and filenpa_run != filenpa_conf:
+				add_cmd.append(filenpa_run)
 
 		filenpas_run.extend(extra_filenpa_runs)
 
@@ -236,6 +245,8 @@ def csc(
 			filenpa_main=filenpa_exe,
 			return_filenpas=False,
 		):
+			if debug is True:
+				print("build")
 			return_code= subprocess.call(cmd)
 		else:
 			if debug is True:
