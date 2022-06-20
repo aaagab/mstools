@@ -52,13 +52,25 @@ def get_xml_tree(filenpa):
 def get_all_build_paths( 
     direpa_root,
     root=True, 
-    build_paths=set(), 
+    build_paths=None, 
     direpa="",
-    excluded_bin_extensions=[],
-    excluded_bin_files=[],
-    excluded_bin_folders=[],
-    included_bin_extensions=[],
+    excluded_bin_extensions=None,
+    excluded_bin_files=None,
+    excluded_bin_folders=None,
+    included_bin_extensions=None,
 ):
+    if build_paths is None:
+        build_paths=set()
+
+    if excluded_bin_extensions is None:
+        excluded_bin_extensions=[]
+    if excluded_bin_files is None:
+        excluded_bin_files=[]
+    if excluded_bin_folders is None:
+        excluded_bin_folders=[]
+    if included_bin_extensions is None:
+        included_bin_extensions=[]
+    
     if not direpa:
         direpa=direpa_root
 
@@ -145,8 +157,11 @@ def get_xml_str_without_namespace(xml_tree, xml_elem):
 
 def get_build_xml_nodes_csproj(
     csproj_xml_tree, 
-    ignore=["log.txt"]
+    ignore=None,
 ):
+
+    if ignore is None:
+        ignore=["log.txt"]
     xml_nodes=[]
     for elem in csproj_xml_tree.iter():
         if elem.tag is not etree.Comment:
