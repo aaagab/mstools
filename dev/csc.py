@@ -256,13 +256,16 @@ def csc(
 		print("Please provide at least one parameter from [\"--fat\", \"--slim\", \"--exe\"]")
 		sys.exit(1)
 
+	# print (return_code)
 	if return_code == 0:
 		cmd=[
 			filenpa_exe
 		]
 		cmd.extend(params)
 
-		subprocess.call(cmd)
+		sys.exit(subprocess.call(cmd))
+	else:
+		sys.exit(return_code)
 
 def set_files_csproj(
 	csproj_xml_tree,
