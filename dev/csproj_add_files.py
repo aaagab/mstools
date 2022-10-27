@@ -32,7 +32,8 @@ def csproj_add_files(
         "obj",
         "packages",
         "_requests",
-        "_db"
+        "_db",
+        "Tests",
     ]
     excluded_bin_files=[
         ".gitignore",

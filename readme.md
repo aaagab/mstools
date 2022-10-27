@@ -106,3 +106,5 @@ With option -delete filemask filter for folder to exclude must be exclude the sa
 
 for publish profiles there is an option to synchronize (mirror) files from sources to build: `/p:DeleteExistingFiles=True`  
 Odly that option does not work for folder in publish directory. So there is no way to automatically remove them, it has to be done manually.   
+
+msdeploy with args -skip:objectName=dirPath,absolutePath={} only accept an absolute path to be accurate. If a relative path is given then any relative path that matches the path is going to be affected. For instance a \\log path would skip all \\log folders in the project. If full path can't be provided at least provide root folders for instance /e/example/log . For a web application on azure pipeline release the path is the web application path not the physical internal path. For instance the full path would be www.example.com//e/example/App_Data
