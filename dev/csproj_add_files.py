@@ -24,6 +24,7 @@ def csproj_add_files(
         "_migrations_backup",
         "_tests",
         "_publish",
+        "_sql",
         "_scripts",
         # "App_Data",
         "Logs",
