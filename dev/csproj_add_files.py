@@ -64,9 +64,7 @@ def csproj_add_files(
 
     remaining_files=set()
     for filenpa in filenpas_all:
-        if os.path.isdir(filenpa):
-            filenpa="{}\\".format(filenpa)
-        else:
+        if not os.path.isdir(filenpa):
             filen=os.path.basename(filenpa)
             if filen[0] == "~":
                 continue
