@@ -61,16 +61,17 @@ def csproj_add_files(
 
     filenpas_csproj=set()
     for xml_node in get_build_xml_nodes_csproj(csproj_xml_tree):
-        filenpas_csproj.add(os.path.join(direpa_root, urllib.parse.unquote(xml_node.attrib["Include"])))
+        filenpas_csproj.add(os.path.normpath(os.path.join(direpa_root, urllib.parse.unquote(xml_node.attrib["Include"]))))
 
     remaining_files=set()
     for filenpa in filenpas_all:
-        if not os.path.isdir(filenpa):
+        if os.path.isdir(filenpa):
             filen=os.path.basename(filenpa)
             if filen[0] == "~":
                 continue
 
         if filenpa.lower() not in [filenpa.lower() for filenpa in filenpas_csproj]:
+            pprint(filenpas_csproj)
             remaining_files.add(filenpa)
 
     if remaining_files:
