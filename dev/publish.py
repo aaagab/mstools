@@ -166,6 +166,7 @@ def publish(
             "/p:PublishProvider=FileSystem",
             "/p:PublishProfile={}".format(profile_name),
             "/p:publishUrl={}".format(direpa_publish),
+            # "/p:publishDir={}".format(direpa_publish),
             # "/p:publishUrl={}".format(r"A:\wrk\e\example\1\src\_publish\proxy"),
             "/p:WebPublishMethod=FileSystem",
             # r"/p:WebPublishPipelineCustomizeTargetFile=A:\wrk\e\example\1\src\example.wpp.targets",
