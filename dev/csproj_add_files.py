@@ -35,6 +35,7 @@ def csproj_add_files(
         "_requests",
         "_db",
         "Tests",
+        "ApexSources",
     ]
     excluded_bin_files=[
         ".gitignore",
