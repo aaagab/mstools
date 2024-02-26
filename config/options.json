@@ -54,6 +54,9 @@
     "ignore_build": {
         "nested": true
     },
+    "force": {
+        "nested": true
+    },
     "force_build": {
         "nested": true
     },
@@ -117,6 +120,7 @@
         "nested": true
     },
     "update": {
+        "args": "force",
         "info": "delete and add files to csproj if needed.",
         "nested": true
     },
