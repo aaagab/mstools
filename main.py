@@ -42,8 +42,8 @@ if __name__ == "__main__":
     args, dy_app=pkg.Options(filenpa_app="gpm.json", filenpa_args="config/options.json").get_argsns_dy_app()
 
     if args.build.here:
+        dy_conf=get_dy_conf()
         dy_csproj=pkg.get_dy_csproj(direpa_root=args.path_csproj.value)
-
         pkg.build_project(
             debug=args.debug.here,
             direpa_root=dy_csproj["direpa_root"],
@@ -90,6 +90,7 @@ if __name__ == "__main__":
             filenpa_csproj=dy_csproj["filenpa_csproj"],
             filenpa_msbuild=dy_conf["filenpa_msbuild"],
             force_build=args.force_build.here,
+            ignore_build=args.ignore_build.here,
             force_csproj=args.force_csproj.here,
             params=args.db.value,
             xml_root_namespace=dy_csproj["xml_root_namespace"],
