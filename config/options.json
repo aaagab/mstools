@@ -25,7 +25,7 @@
         "args": "add,clean,update"
     },
     "db": {
-        "args": "force_build,force_csproj",
+        "args": "force_build,force_csproj,ignore_build",
         "info": "wrapper access to entity db. If no cmd is given help is displayed.",
         "nvalues": "?",
         "values": "entity cmd"
@@ -49,6 +49,9 @@
     },
     "fat": {
         "info": "",
+        "nested": true
+    },
+    "ignore_build": {
         "nested": true
     },
     "force_build": {
