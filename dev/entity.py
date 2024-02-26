@@ -23,6 +23,7 @@ def entity(
     filenpa_csproj,
     filenpa_msbuild,
     force_build,
+    ignore_build,
     force_csproj,
     params,
     xml_root_namespace,
@@ -140,16 +141,17 @@ def entity(
             subprocess.run(cmd)
             sys.exit(0)
         elif main_cmd in ["Enable-Migrations", "Add-Migration", "Update-Database"]:
-            build_project(
-                debug,
-				direpa_root,
-				csproj_xml_tree,
-				filenpa_assembly,
-				filenpa_csproj,
-				filenpa_msbuild,
-                force_build=force_build,
-                force_csproj=force_csproj,
-            )
+            if ignore_build is False:
+                build_project(
+                    debug,
+                    direpa_root,
+                    csproj_xml_tree,
+                    filenpa_assembly,
+                    filenpa_csproj,
+                    filenpa_msbuild,
+                    force_build=force_build,
+                    force_csproj=force_csproj,
+                )
             options=[]
             export_sql_script=False
 
@@ -246,14 +248,15 @@ def entity(
                     validate_sql(filenpa_sql)
 
         elif main_cmd == "Get-Migrations":
-            build_project(
-                debug,
-				direpa_root,
-				csproj_xml_tree,
-				filenpa_assembly,
-				filenpa_csproj,
-				filenpa_msbuild,
-            )
+            if ignore_build is False:
+                build_project(
+                    debug,
+                    direpa_root,
+                    csproj_xml_tree,
+                    filenpa_assembly,
+                    filenpa_csproj,
+                    filenpa_msbuild,
+                )
             print()
             get_current_migrations(
                 commons,
