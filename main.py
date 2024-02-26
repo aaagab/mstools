@@ -77,6 +77,7 @@ if __name__ == "__main__":
                     debug=args.debug.here,
                     direpa_root=dy_csproj["direpa_root"],
                     filenpa_csproj=dy_csproj["filenpa_csproj"],
+                    force=args.force.here,
                 )
     elif args.db.here:
         dy_conf=get_dy_conf()
