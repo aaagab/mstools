@@ -1,140 +1,136 @@
 #!/usr/bin/env python3
-from datetime import datetime
 from pprint import pprint
 import json
-import glob
 from lxml import etree
 import os
-import re
-import socket
 import sys
-import urllib.parse
+
+from .csproj import get_nsmap
+from .get_settings import RawProfile, App, Profile
 
 from ..gpkgs.prompt import prompt_boolean
 from ..gpkgs import message as msg
 
 def get_profile(
-    app_name,
-    conf_apps,
-    conf_profiles,
-    direpa_root,
-    filenpa_apps,
-    filen_assembly,
-    profile_name,
-    profile_names,
-    to_deploy,
-    direpa_deploy,
-):
+    app_name:str,
+    apps:list[App],
+    profiles:list[RawProfile],
+    direpa_root:str,
+    filenpa_settings:str,
+    filen_assembly:str,
+    profile_name:str,
+    to_deploy:bool,
+    direpa_deploy:str|None,
+    no_pubxml:bool,
+) :
     # <?xml version="1.0" encoding="utf-8"?>
     # <Project ToolsVersion="4.0" 
     #   xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
     #   <PropertyGroup>
     #   </PropertyGroup>
     # </Project>
-    hostname=socket.gethostname().lower()
+    profile_names=[p.name for p in profiles]
 
     if to_deploy is True:
         if direpa_deploy is None:
             if profile_name not in profile_names:
-                print("Profile Unknown '{}' in '{}' > globals > confs".format(profile_name, filenpa_apps))
+                msg.error("Profile '{}' not found in  {}".format(profile_name, profile_names))
+                print(f"In file '{filenpa_settings}' add a profile.")
+                print("example:")
+                print(json.dumps(dict(
+                    profiles={
+                        profile_name: {
+                            "deploy_path(optional)": os.path.join(os.path.expanduser("~"), "fty", "local"),
+                            "hostname": "https://localdomain.com"
+                        }
+                    },
+                ), indent=4, sort_keys=True))
                 sys.exit(1)
 
-    direpa_publish_profiles=os.path.join(direpa_root, "Properties","PublishProfiles")
+    p_index=profile_names.index(profile_name)
+    raw_profile=profiles[p_index]
 
-    if not os.path.exists(direpa_publish_profiles):
-        msg.warning("Path not found '{}'".format(direpa_publish_profiles))
-        if prompt_boolean("Do you want to create it") is True:
-            os.makedirs(direpa_publish_profiles, exist_ok=True)
-        else:
-            msg.error("Path is needed for msbuild", exit=1)
+    app_names=[a.name for a in apps]
+    if app_name not in app_names:
+        msg.error("App '{}' not found in  {}".format(app_name, app_names))
+        print(f"In file '{filenpa_settings}' add an app.")
+        print("example:")
+        print(json.dumps(dict(
+            apps={
+                app_name: {
+                    "port": 9050,
+                    "direl": "aa/info"
+                }
+            },
+        ), indent=4, sort_keys=True))
+        sys.exit(1)
 
-    filenpa_profile=os.path.join(direpa_publish_profiles, "{}.pubxml".format(profile_name))
-    if not os.path.exists(filenpa_profile):
-        msg.warning("Not found '{}'".format(filenpa_profile))
-        print()
-        msg.warning("You may want to add the following line in your csproj:")
-        print("""   
-    <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == '{}|AnyCPU' ">
-        <DebugType>pdbonly</DebugType>
-        <Optimize>true</Optimize>
-        <OutputPath>bin</OutputPath>
-        <DefineConstants>TRACE</DefineConstants>
-        <ErrorReport>prompt</ErrorReport>
-        <WarningLevel>4</WarningLevel>
-    </PropertyGroup>
-    <ItemGroup>
-        <None Include="Properties\PublishProfiles\{}.pubxml"/>
-    </ItemGroup>
-            """.format(profile_name.capitalize(), profile_name))
+    app_index=app_names.index(app_name)
+    app=apps[app_index]
 
-        if prompt_boolean("Create file"):
-            nsmap = { None: "http://schemas.microsoft.com/developer/msbuild/2003" }
-            node = etree.Element('Project', nsmap=nsmap)
-            node.set("ToolsVersion", "4.0")
-            child=etree.SubElement(node, "PropertyGroup")
-            child.text=""
-            etree.ElementTree(node).write(filenpa_profile, encoding='utf-8', xml_declaration=True, pretty_print=True)
+    if no_pubxml is False:
+        direpa_publish_profiles=os.path.join(direpa_root, "Properties","PublishProfiles")
 
-
-        else:
-            msg.error("Action cancelled", exit=1)
-
-    deploy_path=None
-    if to_deploy is True:
-        if direpa_deploy is None:
-            if "deploy_path" in conf_profiles[profile_name]:
-                if hostname in conf_profiles[profile_name]["deploy_path"]:
-                    if app_name not in conf_apps:
-                        msg.error("'{}' not found in conf '{}'".format(app_name, filenpa_apps))
-                        print("example:")
-                        print(json.dumps(dict(
-                            apps={
-                                "{}".format(app_name): dict(
-                                    port=9020,
-                                    direl="aa/{}".format(app_name)
-                                )
-                            },
-                        )))
-                        sys.exit(1)
-                    else:
-                        deploy_path=os.path.join(
-                            conf_profiles[profile_name]["deploy_path"][hostname].replace("{user_profile}", os.path.expanduser("~")),
-                            conf_apps[app_name]["direl"]
-                        ).replace("\\", "/")
+        if not os.path.exists(direpa_publish_profiles):
+            msg.warning("Path not found '{}'".format(direpa_publish_profiles))
+            if prompt_boolean("Do you want to create it") is True:
+                os.makedirs(direpa_publish_profiles, exist_ok=True)
             else:
-                msg.error("At '{}' deploy_path key not found in 'globals > confs > {}'".format(filenpa_apps, profile_name), exit=1)
-        else:
-            deploy_path=direpa_deploy.replace("\\", "/")
+                msg.error("Path is needed for msbuild", exit=1)
 
-    profile=dict(
-        direpa_publish=os.path.normpath(os.path.join(direpa_root, "_publish", "build")),
-        deploy_path=deploy_path,
-        hostname_direl="",
-        name=profile_name,
-        web_config="",
-    )
+        filenpa_profile=os.path.join(direpa_publish_profiles, "{}.pubxml".format(profile_name))
+        if not os.path.exists(filenpa_profile):
+            msg.warning("Not found '{}'".format(filenpa_profile))
+            print()
+            msg.warning("You may want to add the following line in your csproj:")
+            print(r"""   
+        <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == '{}|AnyCPU' ">
+            <DebugType>pdbonly</DebugType>
+            <Optimize>true</Optimize>
+            <OutputPath>bin</OutputPath>
+            <DefineConstants>TRACE</DefineConstants>
+            <ErrorReport>prompt</ErrorReport>
+            <WarningLevel>4</WarningLevel>
+        </PropertyGroup>
+        <ItemGroup>
+            <None Include="Properties\PublishProfiles\{}.pubxml"/>
+        </ItemGroup>
+                """.format(profile_name.capitalize(), profile_name))
+
+            if prompt_boolean("Create file"):
+                nsmap = { None: "http://schemas.microsoft.com/developer/msbuild/2003" }
+                node = etree.Element('Project', nsmap=nsmap)#type:ignore
+                node.set("ToolsVersion", "4.0")
+                child=etree.SubElement(node, "PropertyGroup")
+                child.text=""
+                etree.ElementTree(node).write(filenpa_profile, encoding='utf-8', xml_declaration=True, pretty_print=True)
+            else:
+                msg.error("Action cancelled", exit=1)
 
     if to_deploy is True:
         if direpa_deploy is None:
-            if profile_name == "debug":
-                profile["hostname_direl"]="{}:{}".format(
-                    conf_profiles[profile_name]["hostname"],
-                    conf_apps[app_name]["port"]
-                )
-            else:
-                profile["hostname_direl"]="{}/{}".format(
-                    conf_profiles[profile_name]["hostname"],
-                    conf_apps[app_name]["direl"]
-                )
+            if raw_profile.direpa_deploy is None:
+                print(raw_profile.to_json())
+                msg.error(f"At '{filenpa_settings}' profile '{raw_profile.name}' deploy_path is needed.")
+                sys.exit(1)
+            direpa_deploy=os.path.normpath(os.path.join(raw_profile.direpa_deploy, app.direl))
 
     prefix=".{}".format(profile_name)
     if profile_name == "debug":
         prefix=""
-    profile["web_config"]=os.path.join(direpa_root, "Web{}.config".format(prefix))
+
+    profile=Profile(
+        direpa_deploy=direpa_deploy,
+        direpa_publish=os.path.normpath(os.path.join(direpa_root, "_publish", "build")),
+        filenpa_cache_assembly=os.path.join(direpa_root, "obj", profile_name, filen_assembly),
+        hostname_direl=f"{raw_profile.hostname}/{app.direl}",
+        name=profile_name,
+        no_pubxml=no_pubxml,
+        web_config=os.path.join(direpa_root, "Web{}.config".format(prefix)),
+    )
 
     filenpa_hostname=os.path.join(direpa_root, "hostname_url.txt")
     with open(filenpa_hostname, "w") as f:
-        f.write("{}\n".format(profile["hostname_direl"]))
-    profile["filenpa_cache_assembly"]=os.path.join(direpa_root, "obj", profile_name, filen_assembly)
+        f.write("{}\n".format(profile.hostname_direl))
 
     return profile
