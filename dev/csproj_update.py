@@ -5,156 +5,115 @@ import sys
 import urllib.parse
 import subprocess
 
+from lxml.etree import _ElementTree
+
+from .csproj import Csproj
 from .csproj_clean_files import csproj_clean_files
 from .csproj_add_files import csproj_add_files
 from .csproj import get_build_xml_nodes_csproj, get_xml_tree
 
-
 def csproj_update_files(
-    csproj_xml_tree,
-    debug,
-    direpa_root,
-    filenpa_csproj,
-    force=False,
+    csproj:Csproj,
+    force:bool=False,
 ):
-    if debug is True:
-        print("updating '{}'".format(os.path.basename(filenpa_csproj)))
+    if csproj.debug is True:
+        print("updating '{}'".format(os.path.basename(csproj.filenpa_csproj)))
 
-    next_xml_tree=csproj_xml_tree
+    next_xml_tree=csproj.xml_tree
     if csproj_clean_files(
-        csproj_xml_tree,
-        debug,
-        direpa_root,
-        filenpa_csproj,
+        csproj,
         force,
     ) is True:
-        next_xml_tree=get_xml_tree(filenpa_csproj)
-    # csproj_xml needs to be regenerated
+        next_xml_tree=get_xml_tree(csproj.filenpa_csproj)
+
     csproj_add_files(
-        next_xml_tree,
-        debug,
-        direpa_root,
-        filenpa_csproj,
+        csproj=csproj,
+        csproj_xml_tree=next_xml_tree,
     )
 
-# actually this part seems more complicated, because the main .dll can have been build before change to other files that does not need build.
-# html on backend part are not part of the compile process they are just moved.
-
-
-def is_project_need_build(
-    debug,
-    direpa_root,
-    csproj_xml_tree,
-    filenpa_assembly,
-    filenpa_csproj,
-    filenpas=None,
-    filenpa_main=None,
-    return_filenpas=False,
-):
-    need_build=False
-
-    # print(direpa_root, csproj_xml_tree, filenpa_assembly, filenpa_csproj, return_filenpas)
-
-    if filenpa_main is None:
-        filenpa_main=filenpa_assembly
-
-    if not os.path.exists(filenpa_main):
-        if return_filenpas is True:
-            filenpas=[]
-            for xml_node in get_build_xml_nodes_csproj(csproj_xml_tree):
-                filenpa_rel=urllib.parse.unquote(xml_node.attrib["Include"])
-                filenpa=os.path.join(direpa_root, filenpa_rel)
-                filenpas.append(filenpa)
-            filenpas.append(filenpa_csproj)
-            return filenpas
-        else:
-            return True
-    else:
-        date_build=os.path.getmtime(filenpa_main)
-        # print()
-        # print("{:<18}".format(date_build), filenpa_main)
-        # print()
-
-        if filenpas is None:
-            filenpas=[]
-            for xml_node in get_build_xml_nodes_csproj(csproj_xml_tree):
-                filenpa_rel=urllib.parse.unquote(xml_node.attrib["Include"])
-                filenpa=os.path.join(direpa_root, filenpa_rel)
-                filenpas.append(filenpa)
-            filenpas.append(filenpa_csproj)
-
-        filenpas_modified=[]
-        for filenpa in filenpas:
-            date_filenpa=os.path.getmtime(filenpa)
-            if date_filenpa > date_build:
-                # print("{:<18}".format(date_filenpa), filenpa)
-                filenpas_modified.append(filenpa)
-                if return_filenpas is False:
-                    if need_build is False:
-                        if return_filenpas is True:
-                            need_build=True
-                        else:
-                            return True
-                        if debug is True:
-                            print("\nFiles recently modified:")
-                    if debug is True:
-                        print(os.path.basename(filenpa))
-
-    if return_filenpas is True:
-        return filenpas_modified
-    elif need_build:
+def is_file_to_yield(debug:bool, date_build:float, filenpa:str):
+    date_filenpa=os.path.getmtime(filenpa)
+    if date_filenpa > date_build:
+        if debug is True:
+            print("{:<18}".format(date_filenpa), filenpa)
         return True
     else:
         return False
 
-# 1594359213.4478793 A:\wrk\e\example\1\src\bin\Example.dll
+def get_to_build_files(
+    csproj:Csproj,
+    filenpas:list[str]|None=None,
+):
+    if os.path.exists(csproj.filenpa_assembly):
+        date_build=os.path.getmtime(csproj.filenpa_assembly)
+        if csproj.debug is True:
+            print()
+            print("{:<18}".format(date_build), csproj.filenpa_assembly)
+            print()
 
-# 1594387704.5180898 A:\wrk\e\example\1\src\App\route.js
-# 1594387443.5547745 A:\wrk\e\example\1\src\App\services\session.js
-# 1594387337.219834  A:\wrk\e\example\1\src\App\app.js
-# 1594385926.642794  A:\wrk\e\example\1\src\App\components\breadcrumb\breadcrumb.js
-# 1594385897.6917233 A:\wrk\e\example\1\src\Views\Home\Index.cshtml
+        if filenpas is None:
+            for xml_node in get_build_xml_nodes_csproj(csproj.xml_tree):
+                filenpa_rel=urllib.parse.unquote(xml_node.attrib["Include"])
+                filenpa=os.path.join(csproj.direpa_root, filenpa_rel)
+                if is_file_to_yield(csproj.debug, date_build, filenpa):
+                    yield filenpa
+            if is_file_to_yield(csproj.debug, date_build, csproj.filenpa_csproj):
+                yield csproj.filenpa_csproj
+        else:
+            for filenpa in filenpas:
+                if is_file_to_yield(csproj.debug, date_build, filenpa):
+                    yield filenpa
+    else:
+        for xml_node in get_build_xml_nodes_csproj(csproj.xml_tree):
+            filenpa_rel=urllib.parse.unquote(xml_node.attrib["Include"])
+            filenpa=os.path.join(csproj.direpa_root, filenpa_rel)
+            yield filenpa
+        yield csproj.filenpa_csproj
+
+def is_project_need_build(
+    csproj:Csproj,
+    filenpas:list[str]|None=None,
+):
+    if not os.path.exists(csproj.filenpa_assembly):
+        return True
+    else:
+        for filenpa in get_to_build_files(
+            csproj=csproj,
+            filenpas=filenpas,
+        ):
+            return True
+
+    return False
 
 def build_project(
-    debug,
-    direpa_root,
-    csproj_xml_tree,
-    filenpa_assembly,
-    filenpa_csproj,
-    filenpa_msbuild,
-    force_build=False,
-    force_csproj=False,
+    csproj:Csproj,
+    filenpa_msbuild:str,
+    force_build:bool=False,
+    force_csproj:bool=False,
 ):
     csproj_update_files(
-        csproj_xml_tree,
-        debug,
-        direpa_root,
-        filenpa_csproj,
+        csproj=csproj,
         force=force_csproj,
     )
     if force_build is True:
         build_execute(
-            filenpa_csproj,
+            csproj.filenpa_csproj,
             filenpa_msbuild,
         )
     else:
         if is_project_need_build(
-            debug,
-			direpa_root,
-			csproj_xml_tree,
-			filenpa_assembly,
-			filenpa_csproj,
+            csproj=csproj,
         ):    
             build_execute(
-                filenpa_csproj,
+                csproj.filenpa_csproj,
                 filenpa_msbuild,
             )
         else:
             print("No build needed.")
 
 def build_execute(
-    filenpa_csproj,
-    filenpa_msbuild,
+    filenpa_csproj:str,
+    filenpa_msbuild:str,
 ):
     cmd=[]
     for elem in [

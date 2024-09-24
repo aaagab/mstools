@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+from enum import Enum
 import glob
 import json
 from lxml import etree
@@ -6,16 +7,16 @@ from pprint import pprint
 import os
 import re
 import subprocess
-import shutil
 import sys
 import tempfile
-# import threading
+
+from lxml.etree import _ElementTree, _Element
 
 from ..gpkgs import message as msg
 from ..gpkgs import shell_helpers as shell
 from ..gpkgs.prompt import prompt_boolean
 
-def check_direpa_ftp_exists(winscp_profile, direpa_ftp, prompt_directory):
+def check_direpa_ftp_exists(winscp_profile:str, direpa_ftp:str, prompt_directory:bool):
     if winscp_cmd(winscp_profile, "stat {}".format(direpa_ftp), fail=False) == 1:
         if prompt_directory is True:
             msg.warning("Not found: {}".format(direpa_ftp))
@@ -28,28 +29,26 @@ def check_direpa_ftp_exists(winscp_profile, direpa_ftp, prompt_directory):
             msg.error("ftp path not found '{}'".format(direpa_ftp), exit=1)
 
 def deploy(
-    deploy_path,
-    direpa_publish,
-    filenpa_msdeploy,
-    exclude_paths,
-    include_paths,
+    direpa_deploy:str|None,
+    direpa_publish:str,
+    filenpa_msdeploy:str,
+    exclude_paths:list[str],
+    include_paths:list[str],
 ):
-    cmd=[]
-    filenpa_tmp=None
-    success=False
 
-    if deploy_path is None:
-        msg.error("deploy path is not set for selected profile.", exit=1)
+    if direpa_deploy is None:
+        msg.error("deploy path is not set for selected profile.")
+        sys.exit(1)
 
-    if deploy_path[:6] == "ftp://":
+    if direpa_deploy[:6] == "ftp://":
         exclude_default_paths=[
             "App_Data/log.txt", 
             "Uploads/", 
             "Logs/",
         ]
 
-        winscp_profile=deploy_path[6:].split("/")[0]
-        direpa_ftp_dst=deploy_path[6+len(winscp_profile):].replace("\\", "/")
+        winscp_profile=direpa_deploy[6:].split("/")[0]
+        direpa_ftp_dst=direpa_deploy[6+len(winscp_profile):].replace("\\", "/")
         deploy_paths=get_paths(direpa_ftp_dst, direpa_publish, include_paths)
 
         check_direpa_ftp_exists(winscp_profile, direpa_ftp_dst, prompt_directory=False)
@@ -79,9 +78,9 @@ def deploy(
                         check_direpa_ftp_exists(winscp_profile, dy_path["dst"], prompt_directory=True)
                         winscp_cmd(winscp_profile, cmd, fail=True)
     else:
-        print(deploy_path)
-        deploy_path=os.path.normpath(deploy_path)
-        deploy_paths=get_paths(deploy_path, direpa_publish, include_paths)
+        print(direpa_deploy)
+        direpa_deploy=os.path.normpath(direpa_deploy)
+        deploy_paths=get_paths(direpa_deploy, direpa_publish, include_paths)
 
         if deploy_paths is None:
             # msdeploy is needed because msbuild can't preserve an Uploads folder when updating and removing all the rest.
@@ -89,12 +88,10 @@ def deploy(
                 filenpa_msdeploy,
                 "-verb:sync",
                 r"-source:dirPath={}".format(direpa_publish),
-                r"-dest:dirPath={}".format(deploy_path),
-                r"-skip:objectName=dirPath,absolutePath={}\.*".format(os.path.join(deploy_path, "Uploads").replace("\\", "\\\\")),
-                r"-skip:objectName=dirPath,absolutePath={}\.*".format(os.path.join(deploy_path, "Logs").replace("\\", "\\\\")),
+                r"-dest:dirPath={}".format(direpa_deploy),
+                r"-skip:objectName=dirPath,absolutePath={}\.*".format(os.path.join(direpa_deploy, "Uploads").replace("\\", "\\\\")),
+                r"-skip:objectName=dirPath,absolutePath={}\.*".format(os.path.join(direpa_deploy, "Logs").replace("\\", "\\\\")),
                 r"-skip:objectName=filePath,absolutePath=App_Data\\log.txt",
-                # # r"-setParamFile:{}",
-                # -skip:attribute1=value1[,attribute2=value2[.. ,attributeN=valueN]]
             ]
         
             shell.cmd_prompt(cmd)
@@ -124,8 +121,8 @@ def deploy(
 
     msg.success("deploy completed")
 
-def get_filemask(direpa_src, direpa_dst, exclude_paths, exclude_default_paths):
-    dy_paths=dict(
+def get_filemask(direpa_src:str, direpa_dst:str, exclude_paths:list[str], exclude_default_paths:list[str]):
+    dy_paths:dict[str, list[str]]=dict(
         abs=[],
         rel=[],
     )
@@ -196,7 +193,7 @@ def get_filemask(direpa_src, direpa_dst, exclude_paths, exclude_default_paths):
 
     return filemask
 
-def winscp_cmd(winscp_profile, cmd, fail):
+def winscp_cmd(winscp_profile:str, cmd:str, fail:bool):
     filenpa_tmp=tempfile.TemporaryFile().name
     msg.info(cmd)
     with open(filenpa_tmp, "w") as f:
@@ -216,21 +213,17 @@ def winscp_cmd(winscp_profile, cmd, fail):
     return proc.returncode
 
 def get_paths(
-    direpa_deploy,
-    direpa_publish,
-    include_paths,
+    direpa_deploy:str,
+    direpa_publish:str,
+    include_paths:list[str]|None,
 ):
     direpa_publish=direpa_publish.replace("\\", "/")
     direpa_deploy=direpa_deploy.replace("\\", "/")
-
-    # if isinstance(include_paths, str):
-        # include_paths=[include_paths]
 
     dy_paths=[]
     if include_paths is not None:
         for elem in include_paths:
             elem=elem.replace("\\\\", "\\").replace("\\", "/")
-            # if isinstance(elem, str):
             dy_path=dict()
             path_src=elem
             if os.path.isabs(elem) is False:
@@ -257,56 +250,78 @@ def get_paths(
 
             dy_paths.append(dy_path)
 
-            # elif isinstance(elem, dict):
-                # msg.error("push paths dict function not implement yet", exit=1)
-                # # "here" puth a check on direpa_deploy and dst if different then error
-                # pass
-            # else:
-                # msg.error("push paths expected list or str not '{}' with '{}'".format(type(elem), elem), exit=1)
-
     if len(dy_paths) > 0:
         return dy_paths
     else:
         return None
 
-def set_web_config(direpa_publish, webconfigs):
+
+class WebconfigOption(str, Enum):
+    __order__ = "BUNDLE_ON BUNDLE_OFF CUSTOM_ON CUSTOM_OFF DEBUG_ON DEBUG_OFF"
+    BUNDLE_ON="bundle-on"
+    BUNDLE_OFF="bundle-off"
+    CUSTOM_ON="custom-on"
+    CUSTOM_OFF="custom-off"
+    DEBUG_ON="debug-on"
+    DEBUG_OFF="debug-off"
+
+def set_web_config(direpa_publish:str, webconfigs:list[WebconfigOption]):
     filenpa_webconfig=os.path.join(direpa_publish, "Web.config")
     update_webconfig=False
     xml_tree=etree.parse(filenpa_webconfig)
-    root=xml_tree.getroot()
+    if isinstance(xml_tree, _ElementTree) is False:
+        raise Exception(f"At file '{filenpa_webconfig} can't get ElementTree")
+    root:_Element=xml_tree.getroot()
 
     for wconf in webconfigs:
-        xml_elem=None
-        current_value=None
-        new_value=None
-        attr=None
+        xml_elem:_Element|None=None
+        current_value:str|None=None
+        new_value:str|None=None
+        attr:str|None=None
 
-        if wconf in [ "bundle-off", "bundle-on"]:
-            xml_elem=root.find("./appSettings/add[@key='BUNDLE']")
-            current_value=xml_elem.attrib["value"]
-            if wconf[-2:] == "on":
+        if wconf in [ WebconfigOption.BUNDLE_OFF, WebconfigOption.BUNDLE_ON]:
+            key="./appSettings/add[@key='BUNDLE']"
+            xml_elem=root.find(key)
+            if xml_elem is None:
+                raise Exception(f"At file '{filenpa_webconfig} can't find element '{key}'")
+            current_value=str(xml_elem.attrib["value"])
+            if wconf == WebconfigOption.BUNDLE_ON:
                 new_value="true"
-            elif wconf[-3:] == "off":
+            elif wconf == WebconfigOption.BUNDLE_OFF:
                 new_value="false"
             attr="value"
-        elif wconf in [ "custom-off", "custom-on"]:
-            xml_elem=root.find("./system.web/customErrors[@mode]")
-            current_value=xml_elem.attrib["mode"]
-            if wconf[-2:] == "on":
+        elif wconf in [WebconfigOption.CUSTOM_OFF, WebconfigOption.CUSTOM_ON]:
+            key="./system.web/customErrors[@mode]"
+            xml_elem=root.find(key)
+            if xml_elem is None:
+                raise Exception(f"At file '{filenpa_webconfig} can't find element '{key}'")
+            current_value=str(xml_elem.attrib["mode"])
+            
+            if wconf == WebconfigOption.CUSTOM_ON:
                 new_value="On"
-            elif wconf[-3:] == "off":
+            elif wconf == WebconfigOption.CUSTOM_OFF:
                 new_value="Off"
             attr="mode"
-        elif wconf in [ "debug-off", "debug-on"]:
-            xml_elem=root.find("./system.web/compilation[@debug]")
-            current_value=xml_elem.attrib["debug"]
-            if wconf[-2:] == "on":
+        elif wconf in [ WebconfigOption.DEBUG_OFF, WebconfigOption.DEBUG_ON]:
+            key="./system.web/compilation[@debug]"
+            xml_elem=root.find(key)
+            if xml_elem is None:
+                raise Exception(f"At file '{filenpa_webconfig} can't find element '{key}'")
+            current_value=str(xml_elem.attrib["debug"])
+
+            if wconf == WebconfigOption.DEBUG_ON:
                 new_value="true"
-            elif wconf[-3:] == "off":
+            elif wconf == WebconfigOption.DEBUG_OFF:
                 new_value="false"
             attr="debug"
 
         if current_value != new_value:
+            if xml_elem is None:
+                raise Exception(f"xml_elem should be set at this point.")
+            if attr is None:
+                raise Exception(f"attr should be set at this point.")
+            if new_value is None:
+                raise Exception(f"new_value should be set at this point.")
             xml_elem.attrib[attr]=new_value
             update_webconfig=True
 

@@ -7,8 +7,9 @@ import re
 import shlex
 import subprocess
 import sys
-from lxml import etree
+from lxml.etree import _Element, _ElementTree
 
+from .csproj import Csproj
 from .csproj_update import build_project
 from .entity_files.add_migration import add_migration_csproj
 from .entity_files.clean_migrations import clean_migrations
@@ -16,21 +17,21 @@ from .entity_files.clean_migrations import clean_migrations
 from ..gpkgs import message as msg
 
 def entity(
-    csproj_xml_tree,
-    direpa_root,
-    debug,
-    filenpa_assembly,
-    filenpa_csproj,
-    filenpa_msbuild,
-    force_build,
-    ignore_build,
-    force_csproj,
-    params,
-    xml_root_namespace,
+    csproj:Csproj,
+    filenpa_msbuild:str,
+    force_build:bool,
+    ignore_build:bool,
+    force_csproj:bool,
+    params:str|None,
+    xml_root_namespace:str,
 ):
+
     if params is None:
+        print(get_entity_path(csproj.direpa_root))
         print("## Examples:")
-        with open(r"A:\wrk\d\doc\aspnet\entity\all_examples.txt", "r") as f:
+        direpa_script=os.path.dirname(os.path.realpath(__file__))
+        filenpa_examples=os.path.join(direpa_script, "entity_files", "entity_examples.txt")
+        with open(filenpa_examples, "r") as f:
             for line in f.read().splitlines():
                 print(line)
 
@@ -62,19 +63,19 @@ def entity(
                     To rollback a migration you need to use Update-Database 
                 _ Raw
                     After this argument add any command for the entity command line tool
-        """, heredoc=True, indent="  ", bullet="")
+        """, heredoc=True)
         sys.exit(0)
     else:
         migration_name=r"[a-zA-Z0-9-_\.]*"
-        flags=r"(?P<flags>.*)"
+        flags_str=r"(?P<flags>.*)"
         regs=[
-            r"^Add-Migration\s+(?P<name>{}){}$".format(migration_name, flags),
+            r"^Add-Migration\s+(?P<name>{}){}$".format(migration_name, flags_str),
             r"^Clean-Migrations$",
-            r"^Enable-Migrations{}$".format(flags),
+            r"^Enable-Migrations{}$".format(flags_str),
             r"^Get-Migrations$",
-            r"^Update-Database\s-SourceMigration\s+(?P<source>{})\s-TargetMigration\s+(?P<target>{}){}$".format(migration_name, migration_name, flags),
-            r"^Update-Database\s-TargetMigration\s+(?P<target>{}){}$".format(migration_name, flags),
-            r"^Update-Database{}$".format(flags),
+            r"^Update-Database\s-SourceMigration\s+(?P<source>{})\s-TargetMigration\s+(?P<target>{}){}$".format(migration_name, migration_name, flags_str),
+            r"^Update-Database\s-TargetMigration\s+(?P<target>{}){}$".format(migration_name, flags_str),
+            r"^Update-Database{}$".format(flags_str),
             r"Raw(?P<cmd>.*)",
             # r"^Update-Database\s-TargetMigration\s+(?P<target_name>{})\s+-Script$".format(migration_name),
         ]
@@ -110,12 +111,12 @@ def entity(
                 "    \n".join(known_flags),                
             ), heredoc=True, exit=1)
 
-        flags=[]
+        flags:list[str]=[]
         if "flags" in dy_params:
             flags=shlex.split(dy_params["flags"].strip())
 
-        params=shlex.split(params)
-        main_cmd=params[0]
+        lst_params=shlex.split(params)
+        main_cmd=lst_params[0]
 
         for flag in flags:
             if flag not in known_flags:
@@ -132,8 +133,8 @@ def entity(
             "root-namespace",
             "config"
         ]
-        direpa_migrations=os.path.join(direpa_root, "Migrations")
-        cmd=[get_entity_path(direpa_root)]
+        direpa_migrations=os.path.join(csproj.direpa_root, "Migrations")
+        cmd=[get_entity_path(csproj.direpa_root)]
 
         if main_cmd == "Raw":
             options=shlex.split(dy_params["cmd"].strip())
@@ -143,36 +144,26 @@ def entity(
         elif main_cmd in ["Enable-Migrations", "Add-Migration", "Update-Database"]:
             if ignore_build is False:
                 build_project(
-                    debug,
-                    direpa_root,
-                    csproj_xml_tree,
-                    filenpa_assembly,
-                    filenpa_csproj,
-                    filenpa_msbuild,
+                    csproj=csproj,
+                    filenpa_msbuild=filenpa_msbuild,
                     force_build=force_build,
                     force_csproj=force_csproj,
                 )
-            options=[]
-            export_sql_script=False
-
+            options:list[str]=[]
             source=None
             target=None
             if main_cmd == "Update-Database":
                 cmd.append("database")
                 cmd.append("update")
                 if "source" in dy_params:
-                    export_sql_script=True
                     cmd.append("--source")
                     cmd.append(dy_params["source"])
                 if "target" in dy_params:
-                    export_sql_script=True
                     cmd.append("--target")
                     cmd.append(dy_params["target"])
                 options.append("script")
                 options.append("force")
                 options.append("verbose")
-                if "-Script" in flags:
-                    export_sql_script=True
             elif main_cmd == "Enable-Migrations":
                 cmd.append("migrations")
                 cmd.append("enable")
@@ -188,8 +179,8 @@ def entity(
 
             cmd.extend(get_options(
                 commons,
-                direpa_root,
-                filenpa_assembly,
+                csproj.direpa_root,
+                csproj.filenpa_assembly,
                 flags, 
                 options,
                 xml_root_namespace,
@@ -203,20 +194,21 @@ def entity(
                 sql_statements=[]
 
                 rescaffolding=False
-                for line in iter(process.stdout.readline, ''):
-                    print(line, end="")
-                    if main_cmd == "Add-Migration":
-                        if re.match(r"^Re-scaffolding migration .*$", line):
-                            rescaffolding=True
+                if process.stdout is not None:
+                    for line in iter(process.stdout.readline, ''):
+                        print(line, end="")
+                        if main_cmd == "Add-Migration":
+                            if re.match(r"^Re-scaffolding migration .*$", line):
+                                rescaffolding=True
 
-                        if add_migration_filer is None and rescaffolding is False:
-                            reg_migration=re.match(r"^\s+\"migration\":\s.+Migrations\\\\(?P<filer>[0-9]{15}_.+?)\..+$",line)
-                            if reg_migration:
-                                add_migration_filer=reg_migration.group("filer")
-                    elif main_cmd == "Update-Database" and "-Script" in flags:
-                        sql_statements.append(line)
-                    
-                    sys.stdout.flush()
+                            if add_migration_filer is None and rescaffolding is False:
+                                reg_migration=re.match(r"^\s+\"migration\":\s.+Migrations\\\\(?P<filer>[0-9]{15}_.+?)\..+$",line)
+                                if reg_migration:
+                                    add_migration_filer=reg_migration.group("filer")
+                        elif main_cmd == "Update-Database" and "-Script" in flags:
+                            sql_statements.append(line)
+                        
+                        sys.stdout.flush()
                 process.wait()
                 errcode = process.returncode
 
@@ -225,13 +217,11 @@ def entity(
 
                 if add_migration_filer is not None:
                     add_migration_csproj(
-                        direpa_root,
-                        csproj_xml_tree,
-                        filenpa_csproj,
-                        add_migration_filer,
+                        csproj=csproj,
+                        filer=add_migration_filer,
                     )
                 elif len(sql_statements) > 0:
-                    direpa_sql=os.path.join(direpa_root, "_migrations_sql")
+                    direpa_sql=os.path.join(csproj.direpa_root, "_migrations_sql")
                     if not os.path.exists(direpa_sql):
                         os.makedirs(direpa_sql)
 
@@ -250,19 +240,15 @@ def entity(
         elif main_cmd == "Get-Migrations":
             if ignore_build is False:
                 build_project(
-                    debug,
-                    direpa_root,
-                    csproj_xml_tree,
-                    filenpa_assembly,
-                    filenpa_csproj,
-                    filenpa_msbuild,
+                    csproj=csproj,
+                    filenpa_msbuild=filenpa_msbuild,
                 )
             print()
             get_current_migrations(
                 commons,
                 cmd,
-                direpa_root,
-                filenpa_assembly,
+                csproj.direpa_root,
+                csproj.filenpa_assembly,
                 xml_root_namespace,
                 show=True,
             )
@@ -271,24 +257,22 @@ def entity(
             current_migrations=get_current_migrations(
                 commons,
                 cmd,
-                direpa_root,
-                filenpa_assembly,
+                csproj.direpa_root,
+                csproj.filenpa_assembly,
                 xml_root_namespace,
             )
 
             # current_migrations={'202004131322160': 'TestField', '202004061322259': 'InitialCreate', '202001291917567': 'AutomaticMigration'}
             clean_migrations(
-                csproj_xml_tree,
-                current_migrations,
-                direpa_migrations,    
-                direpa_root,
-                filenpa_csproj,
+                csproj=csproj,
+                current_migrations=current_migrations,
+                direpa_migrations=direpa_migrations,    
             )
         else:
             print("Unknown Parameter '{}'".format(main_cmd))
             sys.exit(1)
         
-def get_cmd_str(cmd):
+def get_cmd_str(cmd:list[str]):
     cmd_string=""
     for e, elem in enumerate(cmd):
         if " " in elem:
@@ -301,11 +285,11 @@ def get_cmd_str(cmd):
     return cmd_string
 
 def get_current_migrations(
-    commons,
-    cmd,
-    direpa_root,
-    filenpa_assembly,
-    xml_root_namespace,
+    commons:list[str],
+    cmd:list[str],
+    direpa_root:str,
+    filenpa_assembly:str,
+    xml_root_namespace:str|None,
     show=False,
     ):
     # commons, cmd, show=False
@@ -342,14 +326,14 @@ def get_current_migrations(
         return current_migrations
 
 def get_options(
-    commons,
-    direpa_root,
-    filenpa_assembly,
-    flags, 
-    options,
-    xml_root_namespace, 
+    commons:list[str],
+    direpa_root:str,
+    filenpa_assembly:str,
+    flags:list[str], 
+    options:list[str],
+    xml_root_namespace:str|None, 
 ):
-    tmp_options=[]
+    tmp_options:list[str]=[]
 
     options.extend(commons)
     for option in options:
@@ -393,7 +377,7 @@ def get_options(
     return tmp_options
 
 def get_entity_path(
-    direpa_root,
+    direpa_root:str,
 ):
     direpa_packages=os.path.join(direpa_root, "packages")
 
@@ -413,7 +397,7 @@ def get_entity_path(
     else:
         return filenpa_entity
 
-def validate_sql(filenpa_sql):
+def validate_sql(filenpa_sql:str):
     process = subprocess.Popen(["where", "sqlcmd"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     stdout = process.communicate()[0]
     if process.returncode == 0:
