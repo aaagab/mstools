@@ -1,0 +1,143 @@
+Examples have been obtained from Visual Studio with Nuget Package Manager Console with commands:
+
+get-help EntityFramework6
+
+get-help Add-Migrations -examples
+get-help Enable-Migrations -examples
+get-help Update-Database -examples
+
+                     ___
+                    / __|
+         ___  ___  | |__
+        | __|| __| |  _ \
+        | _| | _|  | |_| |
+        |___||_|    \___/
+
+TOPIC
+    about_EntityFramework6
+
+SHORT DESCRIPTION
+    Provides information about Entity Framework commands.
+
+LONG DESCRIPTION
+    This topic describes the Entity Framework commands. Entity Framework is
+    Microsoft's recommended data access technology for new applications.
+
+    The following Entity Framework cmdlets are used with Entity Framework
+    Migrations.
+
+        Cmdlet              Description
+        -----------------   ---------------------------------------------------
+        Enable-Migrations   Enables Code First Migrations in a project.
+
+        Add-Migration       Scaffolds a migration script for any pending model
+                            changes.
+
+        Update-Database     Applies any pending migrations to the database.
+
+        Get-Migrations      Displays the migrations that have been applied to
+                            the target database.
+
+    The following Entity Framework cmdlets are used by NuGet packages that
+    install Entity Framework providers. These commands are not usually used as
+    part of normal application development.
+
+        Cmdlet                          Description
+        ------------------------------  ---------------------------------------
+        Add-EFProvider                  Adds or updates an Entity Framework
+                                        provider entry in the project config
+                                        file.
+
+        Add-EFDefaultConnectionFactory  Adds or updates an Entity Framework
+                                        default connection factory in the
+                                        project config file.
+
+Add-Migration
+
+   -------------------------- EXAMPLE 1 --------------------------
+    
+    PS C:\>Add-Migration First
+    
+    # Scaffold a new migration named "First"
+    
+    -------------------------- EXAMPLE 2 --------------------------
+    
+    PS C:\>Add-Migration First -IgnoreChanges
+    
+    # Scaffold an empty migration ignoring any pending changes detected in the current model.
+    # This can be used to create an initial, empty migration to enable Migrations for an existing
+    # database. N.B. Doing this assumes that the target database schema is compatible with the
+    # current model.
+
+Enable-Migration
+
+    -------------------------- EXAMPLE 1 --------------------------
+    
+    PS C:\>Enable-Migrations
+    
+    # Scaffold a migrations configuration in a project with only one context
+    
+    -------------------------- EXAMPLE 2 --------------------------
+    
+    PS C:\>Enable-Migrations -Auto
+    
+    # Scaffold a migrations configuration with automatic migrations enabled for a project
+    # with only one context
+    
+    -------------------------- EXAMPLE 3 --------------------------
+    
+    PS C:\>Enable-Migrations -ContextTypeName MyContext -MigrationsDirectory DirectoryName
+    
+    # Scaffold a migrations configuration for a project with multiple contexts
+    # This scaffolds a migrations configuration for MyContext and will put the configuration
+    # and subsequent configurations in a new directory called "DirectoryName"
+
+Get-Migrations
+
+Update-Database
+
+ -------------------------- EXAMPLE 1 --------------------------
+    
+    PS C:\>Update-Database
+    
+    # Update the database to the latest migration
+    
+    
+    -------------------------- EXAMPLE 2 --------------------------
+    
+    PS C:\>Update-Database -TargetMigration Second
+    
+    # Update database to a migration named "Second"
+    # This will apply migrations if the target hasn't been applied or roll back migrations
+    # if it has
+    
+    
+    -------------------------- EXAMPLE 3 --------------------------
+    
+    PS C:\>Update-Database -Script
+    
+    # Generate a script to update the database from its current state to the latest migration
+    
+    
+    -------------------------- EXAMPLE 4 --------------------------
+    
+    PS C:\>Update-Database -Script -SourceMigration Second -TargetMigration First
+    
+    # Generate a script to migrate the database from a specified start migration
+    # named "Second" to a specified target migration named "First"
+    
+    
+    -------------------------- EXAMPLE 5 --------------------------
+    
+    PS C:\>Update-Database -Script -SourceMigration $InitialDatabase
+    
+    # Generate a script that can upgrade a database currently at any version to the latest version.
+    # The generated script includes logic to check the __MigrationsHistory table and only apply changes
+    # that haven't been previously applied.
+    
+    
+    -------------------------- EXAMPLE 6 --------------------------
+    
+    PS C:\>Update-Database -TargetMigration $InitialDatabase
+    
+    # Runs the Down method to roll-back any migrations that have been applied to the database

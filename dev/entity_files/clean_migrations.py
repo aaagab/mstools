@@ -5,20 +5,17 @@ import os
 import re
 import subprocess
 import sys
-from lxml import etree
+from lxml.etree import _ElementTree, _Element
 
-from ..csproj import csproj_update, get_xml_str_without_namespace
+from ..csproj import get_xml_str_without_namespace, Csproj
 
 def clean_migrations(
-    csproj_xml_tree,
-    current_migrations,
-    direpa_migrations,    
-    direpa_root,
-    filenpa_csproj,
-    force=False,
+    csproj: Csproj,
+    current_migrations:dict[str, str],
+    direpa_migrations:str,
 ):
-    need_cleaning=False
-    filenpas_migrations={}
+    need_cleaning:bool=False
+    filenpas_migrations:dict[str, dict[str, list[str]]]=dict()
     for elem in os.listdir(direpa_migrations):
         reg_migration_file=re.match(r"^(?P<date>[0-9]{15})_(?P<filer>.*?)\.(?P<ext>(?:cs|Designer\.cs|resx))$",elem)
         if reg_migration_file:
@@ -44,8 +41,8 @@ def clean_migrations(
                         todelete_migrations[date]={}
                     todelete_migrations[date]["_filens"]=filenpas_migrations[date]["_filens"]
 
-    deleted_migrations=[]
-    kept_migrations=[]
+    deleted_migrations:list[str]=[]
+    kept_migrations:list[str]=[]
     for date in todelete_migrations:
         if need_cleaning is False:
             need_cleaning=True
@@ -76,18 +73,20 @@ def clean_migrations(
     #       <DependentUpon>202004061322259_InitialCreate.cs</DependentUpon>
     #     </EmbeddedResource>
     # </ItemGroup>
-    root=csproj_xml_tree.getroot()
+    root=csproj.xml_tree.getroot()
     ns=dict(ns=format(root.nsmap[None]))
     csproj_xml_elems=root.xpath('.//ns:*[contains(@Include, "Migrations\\")]', namespaces=ns)
     todelete_xml_elems={}
-    for xml_elem in csproj_xml_elems:
-        attr=xml_elem.attrib["Include"]
-        date=attr.replace("Migrations\\", "").split("_")[0]
-        if re.match(r"^[0-9]{15}$", date):
-            if date not in current_migrations:
-                if date not in todelete_xml_elems:
-                    todelete_xml_elems[date]=[]
-                todelete_xml_elems[date].append(xml_elem)
+    if isinstance(csproj_xml_elems, list):
+        for xml_elem in csproj_xml_elems:
+            if isinstance(xml_elem, _Element):
+                attr=str(xml_elem.attrib["Include"])
+                date=attr.replace("Migrations\\", "").split("_")[0]
+                if re.match(r"^[0-9]{15}$", date):
+                    if date not in current_migrations:
+                        if date not in todelete_xml_elems:
+                            todelete_xml_elems[date]=[]
+                        todelete_xml_elems[date].append(xml_elem)
 
     xml_elems_removed=False
     for date in todelete_xml_elems:
@@ -97,25 +96,20 @@ def clean_migrations(
         if date not in kept_migrations:
             print()
             for xml_elem in todelete_xml_elems[date]:
-                print(get_xml_str_without_namespace(csproj_xml_tree, xml_elem))
+                print(get_xml_str_without_namespace(csproj.xml_tree, xml_elem))
             if date in deleted_migrations:
                 xml_elems_removed=True
-                removing_nodes(filenpa_csproj, todelete_xml_elems[date])
+                removing_nodes(csproj.filenpa_csproj, todelete_xml_elems[date])
             else:
-                user_input=input("Do you want to remove unused entries from '{}' [Y/n]? ".format(os.path.basename(filenpa_csproj)))
+                user_input=input("Do you want to remove unused entries from '{}' [Y/n]? ".format(os.path.basename(csproj.filenpa_csproj)))
                 if user_input.lower() == "n":
                     print("Migration kept '{}'".format(migration_name))
                 else:
                     xml_elems_removed=True
-                    removing_nodes(filenpa_csproj, todelete_xml_elems[date])
+                    removing_nodes(csproj.filenpa_csproj, todelete_xml_elems[date])
 
     if xml_elems_removed is True:
-        csproj_update(
-            csproj_xml_tree,
-            direpa_root,
-            filenpa_csproj,
-            force=force,
-        )
+        csproj.write(csproj.xml_tree)
 
     if need_cleaning is False:
         print("Cleaning not needed")
