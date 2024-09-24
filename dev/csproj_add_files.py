@@ -6,14 +6,13 @@ import re
 import sys
 import urllib.parse
 from lxml import etree
+from lxml.etree import _ElementTree, _Element
 
-from .csproj import get_build_xml_nodes_csproj, csproj_update, get_all_build_paths
+from .csproj import get_build_xml_nodes_csproj, get_all_build_paths, get_nsmap, Csproj
 
 def csproj_add_files(
-    csproj_xml_tree,
-    debug,
-    direpa_root,
-    filenpa_csproj,
+    csproj:Csproj,
+    csproj_xml_tree:_ElementTree|None=None,
 ): # add, clean, update
     excluded_bin_folders=[
         ".git",
@@ -37,13 +36,16 @@ def csproj_add_files(
         "Tests",
         "ApexSources",
     ]
+    excluded_bin_folders.extend(csproj.excluded_bin_folders)
     excluded_bin_files=[
         ".gitignore",
         ".yo-rc.json",
         "files.exclude",
         "hostname_url.txt",
         "log.txt",
+        ".mstools.json",
     ]
+    excluded_bin_files.extend(csproj.excluded_bin_files)
     excluded_bin_extensions=[
         ".csproj",
         ".user",
@@ -51,18 +53,32 @@ def csproj_add_files(
         ".log",
         ".csproj_bak"
     ]
+    excluded_bin_extensions.extend(csproj.excluded_bin_extensions)
+
+    excluded_bin_paths=[]
+    excluded_bin_paths.extend(csproj.excluded_bin_paths)
+    tmp_excluded_bin_paths:list[str]=[]
+    for elem in excluded_bin_paths:
+        if os.path.isabs(elem) is False:
+            elem=os.path.join(csproj.direpa_root, elem)
+        elem=os.path.normpath(elem)
+        tmp_excluded_bin_paths.append(elem)
+    excluded_bin_paths=tmp_excluded_bin_paths
 
     filenpas_all=get_all_build_paths(
-        direpa_root=direpa_root,
+        direpa_root=csproj.direpa_root,
         excluded_bin_extensions=excluded_bin_extensions,
         excluded_bin_files=excluded_bin_files,
         excluded_bin_folders=excluded_bin_folders,
         included_bin_extensions=[],
+        excluded_bin_paths=excluded_bin_paths,
     )
 
     filenpas_csproj=set()
+    if csproj_xml_tree is None:
+        csproj_xml_tree=csproj.xml_tree
     for xml_node in get_build_xml_nodes_csproj(csproj_xml_tree):
-        filenpas_csproj.add(os.path.normpath(os.path.join(direpa_root, urllib.parse.unquote(xml_node.attrib["Include"]))))
+        filenpas_csproj.add(os.path.normpath(os.path.join(csproj.direpa_root, urllib.parse.unquote(xml_node.attrib["Include"]))))
 
     remaining_files=set()
     for filenpa in filenpas_all:
@@ -75,11 +91,11 @@ def csproj_add_files(
             remaining_files.add(filenpa)
 
     if remaining_files:
-        nodes=set()
+        nodes:set[_Element]=set()
         searched_tags=set()
         for filenpa in sorted(remaining_files):
             web_conf_elem=False
-            relpath=urllib.parse.quote(os.path.relpath(filenpa, direpa_root)).replace("%5C", "\\")
+            relpath=urllib.parse.quote(os.path.relpath(filenpa, csproj.direpa_root)).replace("%5C", "\\")
             if os.path.isfile(filenpa):
                 filen=os.path.basename(filenpa)
                 if re.match(r"^Web\..+\.config$", filen):                
@@ -104,9 +120,10 @@ def csproj_add_files(
             nodes.add(node)
             searched_tags.add(tag)
 
-        print("\nAdding Lines to '{}':\n".format(os.path.basename(filenpa_csproj)))
-        for node in nodes:
-            etree.dump(node)
+        print("\nAdding Lines to '{}':\n".format(os.path.basename(csproj.filenpa_csproj)))
+
+        for text in sorted([etree.tostring(node).decode() for node in nodes]):
+            print(text)
 
         user_input=input("\nDo you want to continue (Y/n)? ")
         if user_input.lower() == "n":
@@ -115,10 +132,9 @@ def csproj_add_files(
 
         root=csproj_xml_tree.getroot()
         last_item_group=None
-        for item_group in root.findall('ItemGroup', namespaces=root.nsmap):
-            # print(item_group)
+        for item_group in root.findall('ItemGroup', namespaces=get_nsmap(root=root)):
             for tag in searched_tags.copy():
-                items=item_group.findall(".//{}[@Include]".format(tag), namespaces=root.nsmap)
+                items=item_group.findall(".//{}[@Include]".format(tag), namespaces=get_nsmap(root=root))
                 if items:
                     for node in nodes.copy():
                         if node.tag == tag:
@@ -132,44 +148,44 @@ def csproj_add_files(
                 break
 
         pnode_index=None
+
         for tag in searched_tags.copy():
             if pnode_index is None:
-                pnode_index=last_item_group.getparent().index(last_item_group)+1
+                if last_item_group is not None:
+                    parent=last_item_group.getparent()
+                    if parent is not None:
+                        pnode_index=parent.index(last_item_group)+1
             pnode = etree.Element("ItemGroup")
-            root.insert(pnode_index, pnode)
-            pnode_index+=1
+            if pnode_index is not None:
+                root.insert(pnode_index, pnode)
+                pnode_index+=1
             for node in nodes.copy():
                 if node.tag == tag:
-                    insert_node(pnode, pnode.getchildren(), node)
+                    insert_node(pnode, list(pnode), node)
                     nodes.remove(node)
             searched_tags.remove(tag)
         
-        csproj_update(
-            csproj_xml_tree,
-            direpa_root,
-            filenpa_csproj,
-        )
+        csproj.write(xml_tree=csproj_xml_tree)
         return True
     else:
-        if debug is True:
-            print("No Paths to add to '{}'".format(os.path.basename(filenpa_csproj)))
+        if csproj.debug is True:
+            print("No Paths to add to '{}'".format(os.path.basename(csproj.filenpa_csproj)))
         return False
 
-def insert_node(pnode, siblings, node):
-    index=None
+def insert_node(pnode:_Element, siblings:list[_Element], node:_Element):
+    index:int
     found_index=False
     for sibling in siblings:
         index=pnode.index(sibling)
-        # print(index)
-        if node.attrib["Include"] < sibling.attrib["Include"]:
+        if str(node.attrib["Include"]) < str(sibling.attrib["Include"]):
             found_index=True
             break
 
-    if siblings:
+    if len(siblings) == 0:
+        index=0
+    else:
         if found_index is False:
             index+=1
-    else:
-        index=0
 
     pnode.insert(index, node)
  

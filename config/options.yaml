@@ -1,0 +1,121 @@
+args:
+  _examples: |
+    mstools -p proxy --publish -r --any
+    mstools --deploy -p proxy --push '"web.config"'
+    (deprecated for ftp only) mstools -p mydev --deploy --exclude app scripts
+    (deprecated for ftp only) mstools -p mydev --deploy --include App/app/divisions --exclude scripts
+    (deprecated for ftp only) mstools -p mydev --publish -r any --deploy --exclude app scripts App_Data Content EmailTemplates bin\roslyn fonts Properties Views
+    mstools -p prod --publish -r fullstack --pre-deploy _scripts\migration_copy_sql.py --zip-release
+    mstools --run --main mydebug --params thisisparam --slim
+    mstools --run --main mydebug --params thisisparam --exe
+    mstools --run --main mydebug --params thisisparam --fat
+    mstools --run --main mydebug --slim --quiet
+
+    # csc create a project in _runtime folder
+    # it is for quick test on files that don't need to compile the whole solution.
+    # fat use all the assemblies to compile you project
+    mstools --csc mydebug --fat
+    # run allow to run your compiled file once build
+    mstools --csc mydebug --run
+    # slim use only the assemblies selected with the keywords from link argument
+    mstools --csc mydebug --slim --link mimetypes mydebug.cs system.net.http.dll datahelpers newtonsoft web.http.dll
+
+  build:
+    force_build:
+    force_csproj:
+  
+  compile:
+    _info: "Two modes are available. FAT or SLIM. FAT compile the whole solution. SLIM only compile with the linked references."
+  
+  csc:
+    _info: "This command allow quick build for aside development, on selected files to link with csc.exe compiler. Pick a project name to start. It is going to create a new project in _runtime folder with a main and a reference file, that is going to have all the solution files listed. Then you need to compile with --slim or --fat. --fat select all the referenced files. --slim only run files that are not commented in the reference file. You can comment these references manaually or you enable them with --link parameter. for --slim and --fat an exe file is created and is runned. --run only run the executable that have been created. For --fat, --slim, and --run you can select the --params that is going to send parameters to the executable created. This commands create a standalone cli program by extracting a subset of the current solution."
+    _examples: |
+      msbuild --csc PROJECT_NAME --run --params thisisparam --slim
+      msbuild --csc PROJECT_NAME --run --params thisisparam --exe
+      msbuild --csc PROJECT_NAME --run --params thisisparam --fat
+    _label: "PROJECT_NAME"
+    fat:
+    run:
+    slim:
+      _info: "select reference to add to the project with keywords using --link parameters or manually edit the file in the _runtime/project_name/conf/project_name.conf file."
+      link:
+        _info: "Gives Keywords to help findind the reference files for linking"
+        _values: "+"
+        _label: "KEYWORDS"
+    params:
+      _info: "Add params for the file compiled with run command"
+      _label: "MAIN_PARAMS"
+  
+  csproj:
+    add:
+      _info: "add files to csproj if needed."
+    clean:
+      _info: "remove files to csproj if needed."
+    update:
+      _info: "delete and add files to csproj if needed."
+      force:
+
+  db:
+    _info: "wrapper access to entity db. If no cmd is given help is displayed."
+    _values: "?"
+    _label: "entity cmd"
+    force_build:
+    force_csproj:
+    ignore_build:
+  
+  debug:
+      _info: "display debugging message"
+  
+
+  profile:
+    _aliases: --profile,-p
+    _info: "profiles are 'debug, dev, proxy, release, test"
+    _label: "NAME"
+
+    no_pubxml:
+      _info: "publish without a PublishProfiles .pubxml file"
+
+    pre_deploy:
+      _info: "execute script before deploy"
+      _type: "file"
+      _values: "+"
+      _label: "SCRIPT_PATH"
+
+    webconfig:
+      _values: "+"
+      _in: "bundle-on,bundle-off,custom-on,custom-off,debug-on,debug-off"
+
+    deploy:
+      _values: "?"
+      _type: dir
+    
+      exclude:
+        _info: "exclude those folders during deploy"
+        _values: +
+        _label: "DIRNAMES"
+    
+      include:
+        _info: "given relative paths, push only these paths to the project, instead of the whole project."
+        _values: "+"
+        _label: "RELATIVE_PATH"
+
+    publish:
+      _info: "if you add the --deploy argument then deploy will be executed only if the publish build is new, or webconfig has been modified or pre-deploy scripts has been executed"
+    
+      rebuild:
+        _aliases: --rebuild,-r
+        _in: "any,fullstack,frontend"
+        _required: true
+      
+      set_doc:
+      
+      zip_release:
+        _values: "?"
+        _type: dir
+        _label: "PATH"
+
+  path_csproj:
+    _type: dir
+    _info: "main path where .csproj is located, if not given current path is selected"
+    _label: "PATH"
+  

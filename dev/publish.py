@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
+from enum import Enum
 from ctypes import windll, Structure, c_long, byref
 from lxml import etree
+from lxml.etree import _Element, _ElementTree
 from pprint import pprint
 
 import json
@@ -10,88 +12,70 @@ import subprocess
 import sys
 import tempfile
 
-from .csproj_update import csproj_update_files, is_project_need_build
+from .csproj import Csproj
+from .get_settings import Profile
+from .csproj_update import csproj_update_files, is_project_need_build, get_to_build_files
 from ..gpkgs import message as msg
 from ..gpkgs.prompt import prompt_boolean
 
+class RebuildMode(str, Enum):
+    __order__ = "ANY FRONTEND FULLSTACK"
+    ANY="any"
+    FRONTEND="frontend"
+    FULLSTACK="fullstack"
+
 def publish(
-    app_name,
-    debug,
-    direpa_publish,
-    direpa_root,
-    csproj_xml_tree,
-    filenpa_assembly,
-    filenpa_cache_assembly,
-    filenpa_csproj,
-    filenpa_log,
-    filenpa_msbuild,
-    profile_name,
-    rebuild_mode,
-    set_doc,
+    csproj:Csproj,
+    profile:Profile,
+    filenpa_msbuild:str,
+    rebuild_mode:RebuildMode,
+    set_doc:bool,
 ):
  
     if set_doc is True:
-        set_documentation(direpa_root)
+        set_documentation(csproj.direpa_root)
 
     # debug and proxy configuration share the same path and thus the same pm2 instance. however to use either or the other, the application must be republished
     # because they don't have the same web.config and base_path is going to cause an infifinte loop in the browser.
     # debug open at http://localhost:port
     # proxy open at https://www.edu
 
-    os.makedirs(direpa_publish, exist_ok=True)
+    os.makedirs(profile.direpa_publish, exist_ok=True)
 
     csproj_update_files(
-        csproj_xml_tree,
-        debug,
-        direpa_root,
-        filenpa_csproj,
+        csproj=csproj,
     )
 
-    rebuild_frontend=False
-    rebuild_fullstack=False
-
     rebuild=False
-    directories_to_sync=[]
-    filenpas_to_sync=[]
+    directories_to_sync:list[str]=[]
+    filenpas_to_sync:list[str]=[]
 
-    if rebuild_mode == "frontend":
+    if rebuild_mode == RebuildMode.FRONTEND:
         rebuild=False
         directories_to_sync=["App"]
-    elif rebuild_mode == "fullstack":
+    elif rebuild_mode == RebuildMode.FULLSTACK:
         rebuild=True
-    elif rebuild_mode == "any":
-        ### is_project_need_build, 
-        # I also need to check if project need pushed.
-        # because if database has been updated then project needs to be pushed again.
-        filenpa_publish_assembly=os.path.join(direpa_publish, "bin", os.path.basename(filenpa_assembly))
+    elif rebuild_mode == RebuildMode.ANY:
+        # if database has been updated then project needs to be pushed again.
+        filenpa_publish_assembly=os.path.join(profile.direpa_publish, "bin", os.path.basename(csproj.filenpa_assembly))
         if not os.path.exists(filenpa_publish_assembly):
             rebuild=True
         else:
-            previous_profile=get_webconfig_profile(direpa_publish)
-            if previous_profile is None or previous_profile != profile_name:
+            previous_profile=get_webconfig_profile(profile.direpa_publish)
+            if previous_profile is None or previous_profile != profile.name:
                 rebuild=True
             else:
-                if os.path.exists(filenpa_assembly):
+                if os.path.exists(csproj.filenpa_assembly):
                     date_filenpa_publish_assembly=os.path.getmtime(filenpa_publish_assembly)
-                    date_filenpa_assembly=os.path.getmtime(filenpa_assembly)
+                    date_filenpa_assembly=os.path.getmtime(csproj.filenpa_assembly)
                     if date_filenpa_assembly > date_filenpa_publish_assembly:
                         rebuild=True
                 else:
                     rebuild=True
 
-        # pprint(filenpa_assembly)
         if rebuild is False:
-            filenpas=is_project_need_build(
-                debug,
-                direpa_root,
-                csproj_xml_tree,
-                filenpa_assembly,
-                filenpa_csproj,
-                return_filenpas=True,
-            )
-
-            for filenpa in filenpas:
-                filenrel=os.path.relpath(filenpa, direpa_root)
+            for filenpa in get_to_build_files(csproj=csproj):
+                filenrel=os.path.relpath(filenpa, csproj.direpa_root)
                 filerrel, ext = os.path.splitext(filenrel)
 
                 if ext in [
@@ -113,7 +97,7 @@ def publish(
                         rebuild=True
                         break
                     else:
-                        filenpa_pub=os.path.join(direpa_publish, filenrel)
+                        filenpa_pub=os.path.join(profile.direpa_publish, filenrel)
                         update_file=False
                         if os.path.exists(filenpa_pub):
                             date_filenpa_pub=os.path.getmtime(filenpa_pub)
@@ -139,41 +123,31 @@ def publish(
     if rebuild is True:
         # make sure these files are recreated for new check on is_project_need_build, they are the reference date to decide if is_project_need_build
         for filenpa in [
-            filenpa_assembly,
-            filenpa_cache_assembly,
+            csproj.filenpa_assembly,
+            profile.filenpa_cache_assembly,
         ]:
             if os.path.exists(filenpa):
                 os.remove(filenpa)
                 
         # clear logs
-        if os.path.exists(filenpa_log):
-            open(filenpa_log, "w").close()
+        if os.path.exists(csproj.filenpa_log):
+            open(csproj.filenpa_log, "w").close()
 
         cmd=[
             filenpa_msbuild,
-            filenpa_csproj,
-            # "/v:diagnostic",
-            # "/v:detailed",
+            csproj.filenpa_csproj,
             "/v:Normal",
             "/nologo",
             "/m",
-            "/p:Configuration={}".format(profile_name.capitalize()),
-            # "/p:Platform=x86",
+            "/p:Configuration={}".format(profile.name.capitalize()),
             "/p:DeleteExistingFiles=True",
             "/p:DeployOnBuild=True",
             "/p:ExcludeApp_Data=False",
             "/p:LaunchSiteAfterPublish=False",
             "/p:PublishProvider=FileSystem",
-            "/p:PublishProfile={}".format(profile_name),
-            "/p:publishUrl={}".format(direpa_publish),
-            # "/p:publishDir={}".format(direpa_publish),
-            # "/p:publishUrl={}".format(r"A:\wrk\e\example\1\src\_publish\proxy"),
+            "/p:publishUrl={}".format(profile.direpa_publish),
+            "/p:PublishProfile={}".format(profile.name),
             "/p:WebPublishMethod=FileSystem",
-            # r"/p:WebPublishPipelineCustomizeTargetFile=A:\wrk\e\example\1\src\example.wpp.targets",
-            # r"/p:MSDeployPublishSetParametersFile=C:\Users\user\AppData\Local\Temp\test.xml",
-            # "/p:SkipExtraFilesOnServer=True",
-            # '/p:ExcludeFoldersFromDeployment=Uploads',
-            # "-skip:Directory=\\\\App_Data",
         ]
 
         pprint(cmd)
@@ -188,12 +162,12 @@ def publish(
             sys.exit(1)
 
     elif len(directories_to_sync) == 0:
-        msg.info("Publishing Project '{}' is already up-to-date".format(app_name))
+        msg.info("Publishing Project '{}' is already up-to-date".format(csproj.app_name))
         return False
     else:
         for direl_sync in directories_to_sync:
-            direpa_root_client=os.path.normpath(os.path.join(direpa_root, direl_sync))
-            direpa_publish_client=os.path.normpath(os.path.join(direpa_publish, direl_sync))
+            direpa_root_client=os.path.normpath(os.path.join(csproj.direpa_root, direl_sync))
+            direpa_publish_client=os.path.normpath(os.path.join(profile.direpa_publish, direl_sync))
             cmd=r'robocopy "{}" "{}" /MIR /FFT /Z /XA:H /W:5 /njh /njs /ndl /nc /ns'.format(direpa_root_client, direpa_publish_client)
             print(cmd)
             process=subprocess.Popen(cmd)
@@ -209,7 +183,7 @@ def publish(
         print("robocopy success")
         return True
 
-def get_robocopy_error(code):
+def get_robocopy_error(code:int):
     dy_errors={
         16: "echo ***FATAL ERROR*** & goto end",
         15: "OKCOPY + FAIL + MISMATCHES + XTRA & goto end",
@@ -236,7 +210,7 @@ def get_robocopy_error(code):
     else:
         return message
     
-def get_webconfig_profile(direpa_publish):
+def get_webconfig_profile(direpa_publish:str):
     filenpa_webconfig=os.path.join(direpa_publish, "Web.config")
     if not os.path.exists(filenpa_webconfig):
         return None
@@ -255,9 +229,13 @@ def get_webconfig_profile(direpa_publish):
 
     return xml_elem.attrib["value"]
     
-def zip_release(app_name, direpa_dst, direpa_publish):
+def zip_release(app_name:str, direpa_dst:str, direpa_publish:str):
     filenpa_webconfig=os.path.join(direpa_publish, "Web.config")
-    version=etree.parse(filenpa_webconfig).getroot().find("./appSettings/add[@key='VERSION']").attrib["value"]
+    key="./appSettings/add[@key='VERSION']"
+    elem_version=etree.parse(filenpa_webconfig).getroot().find(key)
+    if elem_version is None:
+        raise Exception(f"At file '{filenpa_webconfig}' path '{key}' not found")
+    version=elem_version.attrib["value"]
   
     filer_release="{}-{}".format(app_name, version)
     filerpa_release=os.path.join(direpa_dst, filer_release)
@@ -273,7 +251,7 @@ def zip_release(app_name, direpa_dst, direpa_publish):
     shutil.make_archive(filerpa_release, 'zip', direpa_publish)
     msg.success("File created '{}'".format(filenpa_release))
 
-def set_documentation(direpa_root):
+def set_documentation(direpa_root:str):
     direpa_src=os.path.join(direpa_root)
     direpa_src_documentation=os.path.join(os.path.dirname(direpa_src), "doc", "release")
 
@@ -285,7 +263,7 @@ def set_documentation(direpa_root):
         synchronize_documentation(direpa_src_documentation, direpa_dst_documentation)
         print("Documentation synchronized")
 
-def synchronize_documentation(direpa_src, direpa_dst):
+def synchronize_documentation(direpa_src:str, direpa_dst:str):
     for elem in os.listdir(direpa_src):
         path_elem_src=os.path.join(direpa_src, elem)
         path_elem_dst=os.path.join(direpa_dst, elem)
