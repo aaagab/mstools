@@ -29,6 +29,7 @@ def csproj_update_files(
     csproj_add_files(
         csproj=csproj,
         csproj_xml_tree=next_xml_tree,
+        force=force,
     )
 
 def is_file_to_yield(debug:bool, date_build:float, filenpa:str):
@@ -52,7 +53,7 @@ def get_to_build_files(
             print()
 
         if filenpas is None:
-            for xml_node in get_build_xml_nodes_csproj(csproj.xml_tree):
+            for xml_node in get_build_xml_nodes_csproj(csproj.xml_tree, csproj.ignore_csproj_paths):
                 filenpa_rel=urllib.parse.unquote(xml_node.attrib["Include"])
                 filenpa=os.path.join(csproj.direpa_root, filenpa_rel)
                 if is_file_to_yield(csproj.debug, date_build, filenpa):
@@ -64,7 +65,7 @@ def get_to_build_files(
                 if is_file_to_yield(csproj.debug, date_build, filenpa):
                     yield filenpa
     else:
-        for xml_node in get_build_xml_nodes_csproj(csproj.xml_tree):
+        for xml_node in get_build_xml_nodes_csproj(csproj.xml_tree, csproj.ignore_csproj_paths):
             filenpa_rel=urllib.parse.unquote(xml_node.attrib["Include"])
             filenpa=os.path.join(csproj.direpa_root, filenpa_rel)
             yield filenpa

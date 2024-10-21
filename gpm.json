@@ -9,7 +9,8 @@
         "89d8676a-6b02-43fa-8694-e97de5680cd0|nargs|5.1.2|gpm",
         "ca72f0a9-8a9b-4ff6-a013-e5d0974cb1e5|options|8.8.1|gpm",
         "b1a980c3-6e1c-4072-a16c-81df61f2f898|prompt|3.2.2|gpm",
-        "df328dbe-54ab-4a6d-b7a2-932b0eaee30a|shell_helpers|5.4.2|gpm"
+        "df328dbe-54ab-4a6d-b7a2-932b0eaee30a|shell_helpers|5.4.2|gpm",
+        "01f987df-3241-4c49-9fec-049aa0a8701c|timeout|3.0.1|gpm"
     ],
     "description": "wrapper for several microsoft tools, like msbuild.exe csc.exe msdeploy.exe",
     "filen_main": "main.py",
@@ -18,7 +19,7 @@
         "MIT"
     ],
     "name": "mstools",
-    "timestamp": 1727195549.40752,
+    "timestamp": 1729528346.5820894,
     "uuid4": "1bf4906e-623b-4b6d-9cd3-b4117e3df9e2",
-    "version": "3.0.0"
+    "version": "3.1.0"
 }

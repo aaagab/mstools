@@ -13,6 +13,7 @@ from .csproj import get_build_xml_nodes_csproj, get_all_build_paths, get_nsmap, 
 def csproj_add_files(
     csproj:Csproj,
     csproj_xml_tree:_ElementTree|None=None,
+    force:bool=False,
 ): # add, clean, update
     excluded_bin_folders=[
         ".git",
@@ -55,6 +56,10 @@ def csproj_add_files(
     ]
     excluded_bin_extensions.extend(csproj.excluded_bin_extensions)
 
+    ignore_csproj_paths:list[str]=[
+    ]
+    excluded_bin_extensions.extend(csproj.ignore_csproj_paths)
+
     excluded_bin_paths=[]
     excluded_bin_paths.extend(csproj.excluded_bin_paths)
     tmp_excluded_bin_paths:list[str]=[]
@@ -77,7 +82,7 @@ def csproj_add_files(
     filenpas_csproj=set()
     if csproj_xml_tree is None:
         csproj_xml_tree=csproj.xml_tree
-    for xml_node in get_build_xml_nodes_csproj(csproj_xml_tree):
+    for xml_node in get_build_xml_nodes_csproj(csproj_xml_tree, ignore_csproj_paths):
         filenpas_csproj.add(os.path.normpath(os.path.join(csproj.direpa_root, urllib.parse.unquote(xml_node.attrib["Include"]))))
 
     remaining_files=set()
@@ -125,10 +130,11 @@ def csproj_add_files(
         for text in sorted([etree.tostring(node).decode() for node in nodes]):
             print(text)
 
-        user_input=input("\nDo you want to continue (Y/n)? ")
-        if user_input.lower() == "n":
-            print("Operation cancelled")
-            sys.exit(1)
+        if force is False:
+            user_input=input("\nDo you want to continue (Y/n)? ")
+            if user_input.lower() == "n":
+                print("Operation cancelled")
+                sys.exit(1)
 
         root=csproj_xml_tree.getroot()
         last_item_group=None
