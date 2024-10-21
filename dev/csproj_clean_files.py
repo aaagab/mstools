@@ -13,7 +13,7 @@ def csproj_clean_files(
     force:bool=False,
 ):
     xml_tree=csproj.xml_tree
-    xml_nodes=get_build_xml_nodes_csproj(xml_tree)
+    xml_nodes=get_build_xml_nodes_csproj(xml_tree, csproj.ignore_csproj_paths)
 
     remove_nodes:list[_Element]=[]
     for xml_node in xml_nodes:
