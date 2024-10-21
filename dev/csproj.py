@@ -12,6 +12,7 @@ import re
 import shutil
 import sys
 import urllib.parse
+from ..gpkgs.timeout import TimeOut
 
 class Csproj():
     def __init__(self,
@@ -27,6 +28,7 @@ class Csproj():
         self.excluded_bin_files:list[str]=[]
         self.excluded_bin_extensions:list[str]=[]
         self.excluded_bin_paths:list[str]=[]
+        self.ignore_csproj_paths:list[str]=[]
         filenpa_user_settings=os.path.join(direpa_root, ".mstools.json")
         if os.path.exists(filenpa_user_settings):
             with open(filenpa_user_settings, "r") as f:
@@ -34,19 +36,23 @@ class Csproj():
                 if "excluded_bin_folders" in dy and isinstance(dy["excluded_bin_folders"], list):
                     for elem in dy["excluded_bin_folders"]:
                         if isinstance(elem, str):
-                            self.excluded_bin_folders.append(elem)
+                            self.excluded_bin_folders.append(os.path.normpath(elem))
                 if "excluded_bin_files" in dy and isinstance(dy["excluded_bin_files"], list):
                     for elem in dy["excluded_bin_files"]:
                         if isinstance(elem, str):
-                            self.excluded_bin_files.append(elem)
+                            self.excluded_bin_files.append(os.path.normpath(elem))
                 if "excluded_bin_extensions" in dy and isinstance(dy["excluded_bin_extensions"], list):
                     for elem in dy["excluded_bin_extensions"]:
                         if isinstance(elem, str):
-                            self.excluded_bin_extensions.append(elem)
+                            self.excluded_bin_extensions.append(os.path.normpath(elem))
                 if "excluded_bin_paths" in dy and isinstance(dy["excluded_bin_paths"], list):
                     for elem in dy["excluded_bin_paths"]:
                         if isinstance(elem, str):
-                            self.excluded_bin_paths.append(elem)
+                            self.excluded_bin_paths.append(os.path.normpath(elem))
+                if "ignore_csproj_paths" in dy and isinstance(dy["ignore_csproj_paths"], list):
+                    for elem in dy["ignore_csproj_paths"]:
+                        if isinstance(elem, str):
+                            self.ignore_csproj_paths.append(os.path.normpath(elem))
 
         self.filenpa_log=os.path.join(direpa_root, "Logs", "log.txt")
         self.update_tree(get_xml_tree(self.filenpa_csproj))
@@ -79,6 +85,21 @@ class Csproj():
     def write(self, xml_tree:_ElementTree):
         self.update_tree(xml_tree=xml_tree)
         self.backup()
+
+        timer=TimeOut(2).start()
+        loop=True
+        while True:
+            if timer.has_ended(pause=.001):
+                loop=False
+            try:
+               xml_tree.write(self.filenpa_csproj, encoding='utf-8', xml_declaration=True, pretty_print=True)
+               break
+            except PermissionError as e:
+                if loop is True:
+                    continue
+                else:
+                    raise
+            
         xml_tree.write(self.filenpa_csproj, encoding='utf-8', xml_declaration=True, pretty_print=True)
         print("Updated '{}'".format(self.filenpa_csproj))
 
@@ -105,10 +126,11 @@ def get_xml_str_without_namespace(xml_tree:_ElementTree, xml_elem:_Element):
 
 def get_build_xml_nodes_csproj(
     csproj_xml_tree:_ElementTree, 
-    ignore:list[str]|None=None,
+    ignore_csproj_paths:list[str]|None=None,
 ):
-    if ignore is None:
-        ignore=["log.txt"]
+    if ignore_csproj_paths is None:
+        ignore_csproj_paths=[]
+
     xml_nodes:list[_Element]=[]
     for elem in csproj_xml_tree.iter():
         if elem.tag is not etree.Comment:
@@ -121,8 +143,8 @@ def get_build_xml_nodes_csproj(
                 "EmbeddedResource"
                 ]:
                 if "Include" in elem.attrib:
-                    filen=os.path.basename(urllib.parse.unquote(elem.attrib["Include"]))
-                    if filen not in ignore:
+                    filen=os.path.basename(os.path.normpath(urllib.parse.unquote(elem.attrib["Include"])))
+                    if filen not in ignore_csproj_paths:
                         xml_nodes.append(elem)
 
     return xml_nodes
