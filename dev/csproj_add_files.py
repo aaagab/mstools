@@ -58,7 +58,7 @@ def csproj_add_files(
 
     ignore_csproj_paths:list[str]=[
     ]
-    excluded_bin_extensions.extend(csproj.ignore_csproj_paths)
+    ignore_csproj_paths.extend(csproj.ignore_csproj_paths)
 
     excluded_bin_paths=[]
     excluded_bin_paths.extend(csproj.excluded_bin_paths)
@@ -82,6 +82,7 @@ def csproj_add_files(
     filenpas_csproj=set()
     if csproj_xml_tree is None:
         csproj_xml_tree=csproj.xml_tree
+
     for xml_node in get_build_xml_nodes_csproj(csproj_xml_tree, ignore_csproj_paths):
         filenpas_csproj.add(os.path.normpath(os.path.join(csproj.direpa_root, urllib.parse.unquote(xml_node.attrib["Include"]))))
 
