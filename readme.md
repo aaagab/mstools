@@ -67,18 +67,20 @@ Odly that option does not work for folder in publish directory. So there is no w
 msdeploy with args -skip:objectName=dirPath,absolutePath={} only accept an absolute path to be accurate. If a relative path is given then any relative path that matches the path is going to be affected. For instance a \\log path would skip all \\log folders in the project. If full path can't be provided at least provide root folders for instance /e/example/log . For a web application on azure pipeline release the path is the web application path not the physical internal path. For instance the full path would be domain.com/e/example/App_Data
 
 ## iisexpress
-edit bindings section in file `C:\Users\gabaaa\Documents\IISExpress\config\applicationhost.config`  
+`mstools --build --iis --reset --bind 192.168.1.30`  
 
-```xml
-   <site name="WebSite1" id="1" serverAutoStart="true">
-        <application path="/">
-            <virtualDirectory path="/" physicalPath="%IIS_SITES_HOME%\WebSite1" />
-        </application>
-        <bindings>
-            <binding protocol="http" bindingInformation=":9000:localhost" />
-            <binding protocol="https" bindingInformation="*:44300:localhost" />
-        </bindings>
-    </site>
-```
+Issue:
+  Failed to register URL "https://192.168.1.30:44300/" for site "example" application "/". Error description: Access is denied. (0x80070005)
+Fix:
+  open cmd in administrator mode
+  netsh http add urlacl url=https://192.168.1.30:44300/ user=everyone
 
-Now whenever you run iisexpress the default port are set
+  remove rule if not needed anymore:
+  netsh http delete urlacl url=https://192.168.1.30:44300/
+
+Issue:
+  Can't connect from external computer on url https://192.168.1.30:44300
+  The connection has timed out
+Fix:
+netsh advfirewall firewall add rule name="IISExpressWeb" dir=in protocol=tcp localport=44300 profile=private remoteip=localsubnet action=allow
+
