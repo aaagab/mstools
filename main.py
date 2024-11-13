@@ -64,7 +64,8 @@ if __name__ == "__main__":
 
         if args.build.iis._here:
             pkg.iis(
-                port=args.build.iis.port._value,
+                http_port=args.build.iis.http._value,
+                https_port=args.build.iis.https._value,
                 reset=args.build.iis.reset._here,
                 project_name=csproj.assembly_name,
                 direpa_sources=direpa_sources,
