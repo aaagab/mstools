@@ -2,7 +2,7 @@
 # authors: Gabriel Auger
 # name: mstools
 # licenses: MIT 
-__version__= "3.1.1"
+__version__= "3.2.0"
 
 # from .dev.mstools import mstools
 # from .gpkgs import message as msg
@@ -13,6 +13,7 @@ from .dev.publish import publish, zip_release, RebuildMode
 from .dev.deploy import deploy, set_web_config, WebconfigOption
 from .dev.get_profile import get_profile
 from .dev.csc import csc, CscMode
+from .dev.iis import iis
 from .dev.csproj import get_csproj, Csproj, get_all_build_paths
 from .dev.entity import entity
 from .dev.csproj_clean_files import csproj_clean_files
