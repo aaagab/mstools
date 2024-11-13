@@ -12,7 +12,7 @@ import psutil
 launch_pid="{launch_pid}"
 project_name="{project_name}"
 filenpa_mstools=r"{filenpa_mstools}"
-direpa_sources=r"{direpa_sources}"
+# direpa_sources=r"{direpa_sources}"
 dy_wapp=dict({{
     project_name: dict(
         pids=[],
@@ -44,11 +44,12 @@ with open(filenpa_mstools, "w") as f:
 
 
 try:
-    os.chdir(direpa_sources)
+    # os.chdir(direpa_sources)
     cmd=[
         r"C:\Program Files\IIS Express\iisexpress.exe",
-        "/port:{port}",
-        r"/path:{direpa_sources}"
+        r"/config:{filenpa_config}",
+        r"/site:{project_name}",
+        # r"/path:{direpa_sources}"
     ]
     print(" ".join(cmd))
     proc=subprocess.Popen(cmd)
