@@ -27,6 +27,9 @@ args:
     force_build:
     force_csproj:
     iis:
+      bind:
+        _info: bind to ip address to allow another computer to connect to iisexpress. see readme on how to setup firewall
+        _label: IP
       http:
         _info: port default 9000
         _type: int

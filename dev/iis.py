@@ -56,6 +56,7 @@ def execute_script(
 def iis(
     http_port: int|None, 
     https_port: int|None, 
+    bind: str|None,
     reset: bool,
     project_name: str,
     direpa_sources: str,
@@ -78,8 +79,10 @@ def iis(
     filenpa_host_config_src=os.path.join(os.path.expanduser("~"), "Documents", "IISExpress", "config", "applicationhost.config")
     filenpa_host_config_dst=os.path.join(os.path.expanduser("~"), "fty", "tmp", f"mstools-{project_name}-applicationhost.config")
     with open(filenpa_hostname, "w") as f:
-        f.write(f"https://localhost:{https_port}\n")
-
+        if bind is None:
+            f.write(f"https://localhost:{https_port}\n")
+        else:
+            f.write(f"https://{bind}:{https_port}\n")
 
         lines=[]
         with open(filenpa_host_config_src, "r") as f:
@@ -96,7 +99,10 @@ def iis(
                     lines.append(rf'{prefix}    </application>')
                     lines.append(rf'{prefix}    <bindings>')
                     lines.append(rf'{prefix}        <binding protocol="http" bindingInformation=":{http_port}:localhost" />')
-                    lines.append(rf'{prefix}        <binding protocol="https" bindingInformation=":{https_port}:localhost" />')
+                    if bind is None:
+                        lines.append(rf'{prefix}        <binding protocol="https" bindingInformation=":{https_port}:localhost" />')
+                    else:
+                        lines.append(rf'{prefix}        <binding protocol="https" bindingInformation="{bind}:{https_port}:" />')
                     lines.append(rf'{prefix}    </bindings>')
                     lines.append(rf'{prefix}</site>')
                     append=True
@@ -153,7 +159,6 @@ def iis(
                 filenpa_mstools=filenpa_mstools,
                 filenpa_config=filenpa_host_config_dst,
                 project_name=project_name,
-                direpa_sources=direpa_sources,
                 launch_pid=os.getpid(),
             ),
         )
