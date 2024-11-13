@@ -22,6 +22,7 @@ def get_profile(
     to_deploy:bool,
     direpa_deploy:str|None,
     no_pubxml:bool,
+    filenpa_hostname:str,
 ) :
     # <?xml version="1.0" encoding="utf-8"?>
     # <Project ToolsVersion="4.0" 
@@ -30,7 +31,6 @@ def get_profile(
     #   </PropertyGroup>
     # </Project>
     profile_names=[p.name for p in profiles]
-
     if to_deploy is True:
         if direpa_deploy is None:
             if profile_name not in profile_names:
@@ -129,7 +129,6 @@ def get_profile(
         web_config=os.path.join(direpa_root, "Web{}.config".format(prefix)),
     )
 
-    filenpa_hostname=os.path.join(direpa_root, "hostname_url.txt")
     with open(filenpa_hostname, "w") as f:
         f.write("{}\n".format(profile.hostname_direl))
 

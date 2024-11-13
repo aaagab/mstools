@@ -19,9 +19,13 @@ if __name__ == "__main__":
     sys.path.insert(0, direpa_script_parent)
     if typing.TYPE_CHECKING:
         import __init__ as package #type:ignore
-        from __init__ import WebconfigOption, RebuildMode, CscMode
+        from __init__ import WebconfigOption, RebuildMode, CscMode, Csproj
     pkg:"package" = importlib.import_module(module_name) #type:ignore
     del sys.path[0]
+
+    def get_filenpa_hostname(csproj:"Csproj"):
+        return os.path.join(csproj.direpa_root, "hostname_url.txt")
+
 
     def seed(pkg_major, direpas_configuration:dict, fun_auto_migrate:Callable):
         fun_auto_migrate()
@@ -40,15 +44,32 @@ if __name__ == "__main__":
     debug=args.debug._here
 
     if args.build._here:
+
+        direpa_sources=os.getcwd()
+        if args.build._value is not None:
+            direpa_sources=args.build._value
+
+            if os.getcwd() != direpa_sources:
+                os.chdir(direpa_sources)
+
         csproj=pkg.get_csproj(debug=debug, direpa_root=args.path_csproj._value)
         settings=pkg.get_settings(filenpa_settings=filenpa_settings)
-        
+      
         pkg.build_project(
             csproj=csproj,
             filenpa_msbuild=settings.filenpa_msbuild,
             force_build=args.build.force_build._here,
             force_csproj=args.build.force_csproj._here,
         )
+
+        if args.build.iis._here:
+            pkg.iis(
+                port=args.build.iis.port._value,
+                reset=args.build.iis.reset._here,
+                project_name=csproj.assembly_name,
+                direpa_sources=direpa_sources,
+                filenpa_hostname=get_filenpa_hostname(csproj),
+            )
     elif args.csproj._here:
         csproj=pkg.get_csproj(debug=debug, direpa_root=args.path_csproj._value)
         if args.csproj.clean._here:
@@ -92,6 +113,7 @@ if __name__ == "__main__":
                 to_deploy=args.profile.deploy._here,
                 direpa_deploy=args.profile.deploy._value,
                 no_pubxml=args.profile.no_pubxml._here,
+                filenpa_hostname=get_filenpa_hostname(csproj),
             )
 
             is_new_publishing=False

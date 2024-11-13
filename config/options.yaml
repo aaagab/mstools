@@ -21,8 +21,15 @@ args:
     mstools --csc mydebug --slim --link mimetypes mydebug.cs system.net.http.dll datahelpers newtonsoft web.http.dll
 
   build:
+    _type: dir
+    _values: "?"
+    _label: "PATH"
     force_build:
     force_csproj:
+    iis:
+      port:
+        _type: int
+      reset:
   
   compile:
     _info: "Two modes are available. FAT or SLIM. FAT compile the whole solution. SLIM only compile with the linked references."
