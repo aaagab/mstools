@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+from pprint import pprint
 import os
 import sys
 from .csproj import Csproj
@@ -53,26 +54,62 @@ def execute_script(
 
 
 def iis(
-    port: int|None, 
+    http_port: int|None, 
+    https_port: int|None, 
     reset: bool,
     project_name: str,
     direpa_sources: str,
     filenpa_hostname: str,
 ):
     win_id=None
-    if port is None:
-        port=9000
-
     obj_windows=Windows()
     win_id=obj_windows.get_active()
 
-    window_name="client_{}".format(project_name)
-    filenpa_mstools=os.path.join(os.path.expanduser("~"), "fty", "tmp", "mstools-{}.json".format(port))
+    if http_port is None:
+        http_port=9000
 
+    if https_port is None:
+        https_port=44300
+
+    if https_port < 44300 or https_port > 44399: # type: ignore
+        msg.error("https port must be between 44300 and 44399")
+        sys.exit(1)
+
+    filenpa_host_config_src=os.path.join(os.path.expanduser("~"), "Documents", "IISExpress", "config", "applicationhost.config")
+    filenpa_host_config_dst=os.path.join(os.path.expanduser("~"), "fty", "tmp", f"mstools-{project_name}-applicationhost.config")
     with open(filenpa_hostname, "w") as f:
-        f.write(f"http://localhost:{port}\n")
+        f.write(f"https://localhost:{https_port}\n")
 
-    port_pid=get_port_pid(port)
+
+        lines=[]
+        with open(filenpa_host_config_src, "r") as f:
+            append=True
+            prefix="            "
+            for line in f.read().splitlines():
+                if line.strip() == "<sites>":
+                    lines.append(line)
+                    append=False
+                elif line.strip() == "<siteDefaults>":
+                    lines.append(rf'{prefix}<site name="{project_name}" id="1" serverAutoStart="true">')
+                    lines.append(rf'{prefix}    <application path="/">')
+                    lines.append(rf'{prefix}        <virtualDirectory path="/" physicalPath="{direpa_sources}" />')
+                    lines.append(rf'{prefix}    </application>')
+                    lines.append(rf'{prefix}    <bindings>')
+                    lines.append(rf'{prefix}        <binding protocol="http" bindingInformation=":{http_port}:localhost" />')
+                    lines.append(rf'{prefix}        <binding protocol="https" bindingInformation=":{https_port}:localhost" />')
+                    lines.append(rf'{prefix}    </bindings>')
+                    lines.append(rf'{prefix}</site>')
+                    append=True
+
+                if append is True:
+                    lines.append(line)
+
+        with open(filenpa_host_config_dst, "w") as f:
+            f.write("\n".join(lines)+"\n")
+
+    window_name="client_{}".format(project_name)
+    filenpa_mstools=os.path.join(os.path.expanduser("~"), "fty", "tmp", "mstools-{}.json".format(http_port))
+    port_pid=get_port_pid(http_port)
 
     process_cmd=False
     if port_pid is None:
@@ -114,22 +151,22 @@ def iis(
             window_name=window_name, 
             dy_vars=dict(
                 filenpa_mstools=filenpa_mstools,
+                filenpa_config=filenpa_host_config_dst,
                 project_name=project_name,
                 direpa_sources=direpa_sources,
-                port=port,
                 launch_pid=os.getpid(),
             ),
         )
 
         try:
             while True:
-                port_pid=get_port_pid(port)
+                port_pid=get_port_pid(http_port)
                 if port_pid is not None:
                     with open(filenpa_mstools, "r") as f:
                         dy_wapp=json.load(f)
                         if len(dy_wapp[project_name]["pids"]) >= 2:
                             obj_windows.rename(dy_wapp[project_name]["pids"][1], window_name)
-                    msg.success("frontend development server started on port '{}'".format(port))
+                    msg.success("frontend development server started on port '{}' and '{}'".format(http_port, https_port))
                     break
                 time.sleep(.3)
         except KeyboardInterrupt:

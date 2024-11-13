@@ -27,7 +27,11 @@ args:
     force_build:
     force_csproj:
     iis:
-      port:
+      http:
+        _info: port default 9000
+        _type: int
+      https:
+        _info: port default 44300
         _type: int
       reset:
   
