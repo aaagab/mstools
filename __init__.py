@@ -2,7 +2,7 @@
 # authors: Gabriel Auger
 # name: mstools
 # licenses: MIT 
-__version__= "3.3.0"
+__version__= "3.4.0"
 
 # from .dev.mstools import mstools
 # from .gpkgs import message as msg
