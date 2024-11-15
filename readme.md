@@ -73,6 +73,7 @@ Issue:
   Failed to register URL "https://192.168.1.30:44300/" for site "example" application "/". Error description: Access is denied. (0x80070005)
 Fix:
   open cmd in administrator mode
+  netsh http add urlacl url=https://localhost:44300/ user=everyone
   netsh http add urlacl url=https://192.168.1.30:44300/ user=everyone
 
   remove rule if not needed anymore:
