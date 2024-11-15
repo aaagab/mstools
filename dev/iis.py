@@ -106,7 +106,12 @@ def iis(
                     lines.append(rf'{prefix}    </bindings>')
                     lines.append(rf'{prefix}</site>')
                     append=True
-
+                elif line.strip() == '<section name="caching" overrideModeDefault="Allow" />':
+                    lines.append(rf'{prefix}<section name="caching" overrideModeDefault="Deny" />')
+                    continue
+                elif line.strip() == '<caching enabled="true" enableKernelCache="true">':
+                    lines.append(rf'        <caching enabled="false" enableKernelCache="false">')
+                    continue
                 if append is True:
                     lines.append(line)
 
