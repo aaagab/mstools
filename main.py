@@ -138,7 +138,7 @@ if __name__ == "__main__":
                 webconfigs:list["WebconfigOption"]=[]
                 for wconf in args.profile.webconfig._values:
                     try:
-                        webconfigs.append(WebconfigOption(wconf))
+                        webconfigs.append(pkg.WebconfigOption(wconf))
                     except ValueError:
                         pkg.msg.error(f"webconfig option '{wconf}' not found in {sorted([r.value for r in pkg.WebconfigOption])}")
                         sys.exit(1)
